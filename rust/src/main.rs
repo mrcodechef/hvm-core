@@ -10,6 +10,7 @@ use crate::core::*;
 use crate::lang::*;
 
 fn main() {
+
   // Initializes the book
   let book = &mut Book::new();
 
@@ -250,28 +251,27 @@ fn main() {
 
   // Initializes the net
   let net = &mut Net::new(1 << 24);
-  net.boot(name_to_u32("ex4"));
+
+  // HACK HERE
+  //net.root = Ptr { data: 0x502c6000 };
+  //net.acts.push((Ptr { data: 0xa02c6000 }, Ptr { data: 0x1000096a }));
+  //net.acts.push((Ptr { data: 0xa02c6040 }, Ptr { data: 0x100009c2 }));
+  //net.node[0x02C6000] = Node::new(Ptr { data: 0x502c6080 }, Ptr { data: 0x30000000 });
+  //net.node[0x02C6040] = Node::new(Ptr { data: 0x1000001d }, Ptr { data: 0xa02c6080 });
+  //net.node[0x02C6080] = Node::new(Ptr { data: 0x10000024 }, Ptr { data: 0x402c6000 });
 
   // Computes its normal form
+  net.boot(name_to_u32("ex4"));
   net.expand(book, Ptr::new(VRR,0));
-  net.reduce(book);
-  //net.normal(book);
+  //net.rewrite_once(book);
+  //net.rewrite_once(book);
+  //net.rewrite_once(book);
 
   //Shows results and stats
   println!("[net]\n{}", show_net(&net));
   println!("size: {}", net.node.len());
   println!("used: {}", net.used);
   println!("rwts: {}", net.rwts);
-
-  //println!("net.root = {:08x}", net.root.data);
-  //for i in 0 .. net.acts.len() {
-    //println!("net.acts[{:04x}] = {:08x} {:08x}", i, net.acts[i].0.data, net.acts[i].1.data);
-  //}
-  //for i in 0 .. net.node.len() {
-    //if net.node[i].ports[0].data != 0 || net.node[i].ports[1].data != 0 {
-      //println!("net.node[{:04x}] = {:08x} {:08x}", i, net.node[i].ports[0].data, net.node[i].ports[1].data);
-    //}
-  //}
 
   //populate_cuda(&book); // prints CUDA book
 }

@@ -575,7 +575,8 @@ __device__ Worker init_worker(Net* net, bool flip) {
   Worker worker;
   worker.uid  = flip ? col * GROUP_SIZE + row : row * GROUP_SIZE + col;
   worker.tid  = threadIdx.x;
-  worker.aloc = rng(clock() * (gid + 1));
+  //worker.aloc = rng(clock() * (gid + 1));
+  worker.aloc = gid * 64;
   worker.rwts = 0;
   worker.quad = worker.tid % 4;
   worker.port = worker.tid % 2;
@@ -738,7 +739,7 @@ __global__ void global_rewrite(Net* net, Book* book, u32 repeat, u32 tick, bool 
   u64* a_len = net->bags + a_uid * RBAG_SIZE;
   u64* b_len = net->bags + b_uid * RBAG_SIZE;
   //printf("[%04x:%x] tid=%x split! %04x ~ %04x | flip=%u tick=%u side=%u lpad=%u gpad=%u\n", worker.uid, worker.quad, worker.tid, a_uid, b_uid, flip, tick, side, lpad, gpad);
-  split(worker.quad + side * 4, a_len, a_len+1, b_len, b_len+1, RBAG_SIZE);
+  //split(worker.quad + side * 4, a_len, a_len+1, b_len, b_len+1, RBAG_SIZE);
   __syncthreads();
 
   // When the work ends, sum stats
@@ -3428,7 +3429,7 @@ int main() {
   Net* cpu_net = mknet();
   Book* cpu_book = mkbook();
   populate(cpu_book);
-  boot(cpu_net, 0x00029f05); // initial term
+  boot(cpu_net, 0x00029f05); // 29f05 == ex4
 
   // Prints the input net
   printf("\nINPUT\n=====\n\n");
@@ -3447,25 +3448,7 @@ int main() {
   //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
   //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
   //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_global_rewrite(gpu_net, gpu_book, 1, 0, 0);
-  //do_normal(gpu_net, gpu_book);
+
   cudaDeviceSynchronize();
 
   // Gets end time
@@ -3476,7 +3459,7 @@ int main() {
   Net* norm = net_to_cpu(gpu_net);
 
   // Prints the output
-  print_tree(norm, norm->root);
+  //print_tree(norm, norm->root);
   printf("\nNORMAL ~ rewrites=%d redexes=%d\n======\n\n", norm->rwts, norm->blen);
   print_net(norm);
   printf("Time: %llu ms\n", delta_time);

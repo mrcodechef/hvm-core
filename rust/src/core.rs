@@ -415,6 +415,12 @@ impl Net {
     return ptr;
   }
 
+  pub fn rewrite_once(&mut self, book: &Book) {
+    if let Some((mut a, mut b)) = self.acts.pop() {
+      self.interact(book, &mut a, &mut b);
+    }
+  }
+
   // Performs a global parallel rewrite.
   pub fn rewrite(&mut self, book: &Book) -> usize {
     let rwts = self.acts.len();
