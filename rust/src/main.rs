@@ -228,7 +228,7 @@ fn main() {
   define(book, "ex2", "
     $ main
     & @run ~ (0 nie main)
-    & @c14 ~ (0 @I (0 @E nie))
+    & @c10 ~ (0 @I (0 @E nie))
   "); 
 
   // Decreases many binary counters until they reach 0
@@ -248,13 +248,17 @@ fn main() {
     ~ @c1
   ");
 
+  println!("------------------------");
+
   // Initializes the net
   let net = &mut Net::new(1 << 24);
-  net.boot(name_to_u32("ex4"));
+  net.boot(name_to_u32("ex2"));
 
   // Computes its normal form
   net.expand(book, Ptr::new(VRR,0));
-  net.reduce(book);
+  while net.acts.len() > 0 {
+    net.rewrite_once(book);
+  }
   //net.normal(book);
 
   //Shows results and stats

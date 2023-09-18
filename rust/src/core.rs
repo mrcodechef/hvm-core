@@ -246,6 +246,7 @@ impl Net {
       if self.get(self.next as Val, P1).tag() == NIL {
         self.next += 1;
         self.used += 1;
+        println!("alloc at {} (used={})", self.next, self.used);
         return (self.next - 1) as Val;
       }
       self.next += 1;
@@ -451,6 +452,13 @@ impl Net {
       self.expand(book, Ptr::new(VR2, ptr.val()));
     } else if ptr.is_ref() {
       *dir.target(self).unwrap() = self.deref(book, ptr, dir, &mut 0);
+    }
+  }
+
+  // Performs a global parallel rewrite.
+  pub fn rewrite_once(&mut self, book: &Book) {
+    if let Some((mut a, mut b)) = self.acts.pop() {
+      self.interact(book, &mut a, &mut b);
     }
   }
 
