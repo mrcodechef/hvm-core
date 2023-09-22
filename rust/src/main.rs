@@ -229,7 +229,7 @@ fn main() {
   // Decreases many binary counters.
   define(book, "ex3", "
     $ res
-    & @c12 ~ (0 @S (0 @Z dep))
+    & @c10 ~ (0 @S (0 @Z dep))
     & @brn ~ (0 dep res)
   "); 
 
@@ -254,8 +254,8 @@ fn main() {
   let start = std::time::Instant::now();
 
   // Computes its normal form
-  net.expand(book, Ptr::new(VRR,0));
-  net.reduce(book);
+  //net.expand(book, Ptr::new(VRR,0));
+  //net.reduce(book);
   net.normal(book);
 
   //Shows results and stats

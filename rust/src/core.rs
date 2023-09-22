@@ -7,7 +7,8 @@
 // they interact with nodes, and are cleared when they interact with ERAs, allowing for constant
 // space evaluation of recursive functions on Scott encoded datatypes.
 
-use std::collections::HashMap;
+use std::sync::atomic::{AtomicU8, AtomicUsize};
+use std::sync::atomic::Ordering::{*};
 
 pub type Tag = u16;
 pub type Val = u64;
@@ -42,10 +43,11 @@ pub struct Ptr(pub Val);
 pub struct Node(pub (Ptr,Ptr));
 
 // A interaction combinator net.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Net {
   pub root: Ptr, // entrancy
   pub rdex: Vec<(Ptr,Ptr)>, // redexes
+  pub lock: Vec<AtomicU8>, // locks
   pub node: Vec<Node>, // nodes
   pub used: usize, // allocated nodes
   pub rwts: usize, // rewrite count
@@ -155,8 +157,8 @@ impl Node {
   }
 
   #[inline(always)]
-  pub fn port(&self, port: Port) -> Ptr {
-    return if port == P1 { self.0.0 } else { self.0.1 };
+  pub fn port(&self, port: Port) -> &Ptr {
+    return if port == P1 { &self.0.0 } else { &self.0.1 };
   }
 
   #[inline(always)]
@@ -168,7 +170,11 @@ impl Node {
 impl Book {
   #[inline(always)]
   pub fn new() -> Self {
-    Book { defs: vec![Net::new(0); 1 << 24] }
+    let mut defs = vec![];
+    for i in 0 .. 1 << 24 {
+      defs.push(Net::new(0));
+    }
+    Book { defs }
   }
 
   #[inline(always)]
@@ -185,10 +191,17 @@ impl Book {
 impl Net {
   // Creates an empty net with given size.
   pub fn new(size: usize) -> Self {
+    let mut node = vec![];
+    let mut lock = vec![];
+    for i in 0 .. size {
+      node.push(Node::nil());
+      lock.push(AtomicU8::new(0xFF));
+    }
     Net {
       root: Ptr::new(NIL, 0),
       rdex: vec![],
-      node: vec![Node::nil(); size],
+      node: node,
+      lock: lock,
       next: 0,
       used: 0,
       rwts: 0,
@@ -252,7 +265,7 @@ impl Net {
   // Gets the pointer stored on the port 1 or 2 of a node.
   #[inline(always)]
   pub fn get(&self, index: Val, port: Port) -> Ptr {
-    return self.at(index).port(port);
+    return *self.at(index).port(port);
   }
 
   // Sets the pointer stored on the port 1 or 2 of a node.
@@ -273,7 +286,7 @@ impl Net {
   }
 
   // Links two pointers, forming a new wire.
-  pub fn link(&mut self, a: Ptr, b: Ptr) {
+  pub fn link(&mut self, a: Ptr, b: Ptr, rdex: &mut Vec<(Ptr,Ptr)>) {
     // Substitutes A
     if a.is_var() {
       *self.target(a).unwrap() = b;
@@ -284,12 +297,12 @@ impl Net {
     }
     // Creates redex A-B
     if a.is_pri() && b.is_pri() {
-      self.rdex.push((a, b));
+      rdex.push((a, b));
     }
   }
 
   // Performs an interaction over a redex.
-  pub fn interact(&mut self, book: &Book, a: &mut Ptr, b: &mut Ptr) {
+  pub fn interact(&mut self, book: &Book, a: &mut Ptr, b: &mut Ptr, rdex: &mut Vec<(Ptr,Ptr)>) {
     self.rwts += 1;
 
     // Symmetry
@@ -313,27 +326,27 @@ impl Net {
 
     // Dereference
     if a.is_ref() && b.is_ctr() {
-      *a = self.deref(book, *a, Ptr::new(NIL,0));
+      *a = self.deref(book, *a, Ptr::new(NIL,0), rdex);
     }
 
     // Substitute
     if a.is_var() || b.is_var() {
-      self.link(*a, *b);
+      self.link(*a, *b, rdex);
     }
 
     // CON-CON
     if a.is_ctr() && b.is_ctr() && a.tag() == b.tag() {
-      self.link(self.get(a.val(), P1), self.get(b.val(), P1));
-      self.link(self.get(a.val(), P2), self.get(b.val(), P2));
+      self.link(self.get(a.val(), P1), self.get(b.val(), P1), rdex);
+      self.link(self.get(a.val(), P2), self.get(b.val(), P2), rdex);
       self.free(a.val());
       self.free(b.val());
     // CON-DUP
     } else if a.is_ctr() && b.is_ctr() && a.tag() != b.tag() {
       let loc = self.alloc(4);
-      self.link(self.get(a.val(), P1), Ptr::new(b.tag(), loc+0));
-      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+2));
-      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+1));
-      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+3));
+      self.link(self.get(a.val(), P1), Ptr::new(b.tag(), loc+0), rdex);
+      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+2), rdex);
+      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+1), rdex);
+      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+3), rdex);
       *self.at_mut(loc+0) = Node::new(Ptr::new(VR1, loc+2), Ptr::new(VR1, loc+3));
       *self.at_mut(loc+1) = Node::new(Ptr::new(VR2, loc+2), Ptr::new(VR2, loc+3));
       *self.at_mut(loc+2) = Node::new(Ptr::new(VR1, loc+0), Ptr::new(VR1, loc+1));
@@ -344,20 +357,20 @@ impl Net {
     } else if a.is_opX() && b.is_num() {
       let v1 = self.get(a.val(), P1);
       self.set(a.val(), P1, *b);
-      self.link(Ptr::new(OPY, a.val()), v1);
+      self.link(Ptr::new(OPY, a.val()), v1, rdex);
     // OPY-NUM
     } else if a.is_opY() && b.is_num() {
       let v0 = self.get(a.val(), P1);
       let rt = self.get(a.val(), P2);
-      self.link(Ptr::new(NUM, v0.val() + b.val()), rt); // TODO: OP TABLE
+      self.link(Ptr::new(NUM, v0.val() + b.val()), rt, rdex); // TODO: OP TABLE
       self.free(a.val());
     // OPX-CTR
     } else if a.is_opX() && b.is_ctr() {
       let loc = self.alloc(4);
-      self.link(self.get(a.val(), P1), Ptr::new(b.tag(), loc+0));
-      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+2));
-      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+1));
-      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+3));
+      self.link(self.get(a.val(), P1), Ptr::new(b.tag(), loc+0), rdex);
+      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+2), rdex);
+      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+1), rdex);
+      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+3), rdex);
       *self.at_mut(loc+0) = Node::new(Ptr::new(VR1, loc+2), Ptr::new(VR1, loc+3));
       *self.at_mut(loc+1) = Node::new(Ptr::new(VR2, loc+2), Ptr::new(VR2, loc+3));
       *self.at_mut(loc+2) = Node::new(Ptr::new(VR1, loc+0), Ptr::new(VR1, loc+1));
@@ -367,9 +380,9 @@ impl Net {
     // OPY-CTR
     } else if a.is_opY() && b.is_ctr() {
       let loc = self.alloc(3);
-      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+0));
-      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+1));
-      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+2));
+      self.link(self.get(a.val(), P2), Ptr::new(b.tag(), loc+0), rdex);
+      self.link(self.get(b.val(), P1), Ptr::new(a.tag(), loc+1), rdex);
+      self.link(self.get(b.val(), P2), Ptr::new(a.tag(), loc+2), rdex);
       *self.at_mut(loc+0) = Node::new(Ptr::new(VR2, loc+1), Ptr::new(VR2, loc+2));
       *self.at_mut(loc+1) = Node::new(Ptr::new(VR1, loc+0), Ptr::new(VR2, loc+0));
       *self.at_mut(loc+2) = Node::new(self.get(a.val(),P1), self.get(a.val(),P1));
@@ -377,17 +390,17 @@ impl Net {
       self.free(b.val());
     // OPX-ERA
     } else if a.is_opX() && b.is_era() {
-      self.link(self.get(a.val(), P1), Ptr::new(ERA, 0));
-      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0));
+      self.link(self.get(a.val(), P1), Ptr::new(ERA, 0), rdex);
+      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0), rdex);
       self.free(a.val());
     // OPY-ERA
     } else if a.is_opY() && b.is_era() {
-      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0));
+      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0), rdex);
       self.free(a.val());
     // CON-ERA
     } else if a.is_ctr() && b.is_era() {
-      self.link(self.get(a.val(), P1), Ptr::new(ERA, 0));
-      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0));
+      self.link(self.get(a.val(), P1), Ptr::new(ERA, 0), rdex);
+      self.link(self.get(a.val(), P2), Ptr::new(ERA, 0), rdex);
       self.free(a.val());
     }
   }
@@ -446,7 +459,7 @@ impl Net {
   }
 
   // Expands a closed net.
-  pub fn deref(&mut self, book: &Book, ptr: Ptr, parent: Ptr) -> Ptr {
+  pub fn deref(&mut self, book: &Book, ptr: Ptr, parent: Ptr, rdex: &mut Vec<(Ptr,Ptr)>) -> Ptr {
     self.dref += 1;
     let mut ptr = ptr;
     // White ptr is still a REF...
@@ -467,7 +480,7 @@ impl Net {
         for got in &got.rdex {
           let p1 = got.0.adjust(loc);
           let p2 = got.1.adjust(loc);
-          self.rdex.push((p1, p2));
+          rdex.push((p1, p2));
         }
         // Overwrites 'ptr' with the loaded root pointer, adjusting locations...
         ptr = got.root.adjust(loc);
@@ -482,14 +495,14 @@ impl Net {
 
   // Reduces all redexes.
   pub fn reduce(&mut self, book: &Book) {
-    let mut rdex : Vec<(Ptr,Ptr)> = vec![];
-    std::mem::swap(&mut self.rdex, &mut rdex);
-    while rdex.len() > 0 {
-      for (a, b) in &mut rdex {
-        self.interact(book, a, b);
+    let mut rdex_a : Vec<(Ptr,Ptr)> = std::mem::replace(&mut self.rdex, vec![]);
+    let mut rdex_b : Vec<(Ptr,Ptr)> = vec![];
+    while rdex_a.len() > 0 {
+      for (a, b) in &mut rdex_a {
+        self.parallel_interact(book, a, b, &mut rdex_b);
       }
-      rdex.clear();
-      std::mem::swap(&mut self.rdex, &mut rdex);
+      rdex_a.clear();
+      std::mem::swap(&mut rdex_a, &mut rdex_b);
     }
   }
 
@@ -509,7 +522,122 @@ impl Net {
       self.expand(book, Ptr::new(VR1, ptr.val()));
       self.expand(book, Ptr::new(VR2, ptr.val()));
     } else if ptr.is_ref() {
-      *self.target(dir).unwrap() = self.deref(book, ptr, dir);
+      let mut rdex = vec![]; // FIXME: slow / unecessary
+      *self.target(dir).unwrap() = self.deref(book, ptr, dir, &mut rdex);
+      self.rdex.extend(rdex.drain(..));
     }
   }
+
+  // Parallel Reducer
+  // ----------------
+  // Uses a lock-based approach. For a lock-free algorithm, check the paper and hvm2.cu.
+
+  #[inline(always)]
+  fn lock_node_of(&self, tid: u8, ptr: Ptr) -> bool {
+    if ptr.has_loc() {
+      let expect = 0xFF;
+      let mut_to = tid;
+      let locker = unsafe { self.lock.get_unchecked(ptr.val() as usize) };
+      let locked = match locker.compare_exchange_weak(expect, mut_to, Acquire, Relaxed) {
+        Ok(_) => { true }
+        Err(old) => { old == tid }
+      };
+      //println!("locked {:016x} ? {}", ptr.data(), locked);
+      return locked;
+    } else {
+      //println!("locked {:016x} *", ptr.data());
+      return true;
+    }
+  }
+
+  #[inline(always)]
+  fn unlock_node_of(&self, tid: u8, ptr: Ptr, locked: bool) {
+    if locked {
+      if ptr.has_loc() {
+        let locker = unsafe { self.lock.get_unchecked(ptr.val() as usize) };
+        locker.store(0xFF, Release);
+        //println!("unlocked {:016x} ?", ptr.data());
+      } else {
+        //println!("unlocked {:016x} *", ptr.data())
+      }
+    }
+  }
+
+  pub fn parallel_interact(&mut self, book: &Book, a_ref: &mut Ptr, b_ref: &mut Ptr, rdex: &mut Vec<(Ptr,Ptr)>) {
+    // Locks principal region
+    let a_ptr = *a_ref;
+    let b_ptr = *b_ref;
+    let a_lck = self.lock_node_of(0, a_ptr);
+    let b_lck = self.lock_node_of(0, b_ptr);
+
+    // Success flag
+    let mut success = false;
+
+    // If acquired principal locks...
+    if a_lck && b_lck {
+      // Gets surrounding ports
+      let a1_ptr;
+      let a2_ptr;
+      if a_ptr.has_loc() {
+        let aN = self.at(a_ptr.val());
+        a1_ptr = *aN.port(P1);
+        a2_ptr = *aN.port(P2);
+      } else {
+        a1_ptr = Ptr::new(NIL,0);
+        a2_ptr = Ptr::new(NIL,0);
+      }
+      let b1_ptr;
+      let b2_ptr;
+      if b_ptr.has_loc() {
+        let bN = self.at(b_ptr.val());
+        b1_ptr = *bN.port(P1);
+        b2_ptr = *bN.port(P2);
+      } else {
+        b1_ptr = Ptr::new(NIL,0);
+        b2_ptr = Ptr::new(NIL,0);
+      }
+
+      // Locks surrounding nodes
+      let a1_lck = self.lock_node_of(0, a1_ptr);
+      let a2_lck = self.lock_node_of(0, a2_ptr);
+      let b1_lck = self.lock_node_of(0, b1_ptr);
+      let b2_lck = self.lock_node_of(0, b2_ptr);
+
+      // If acquired surrounding locks...
+      if a1_lck && a2_lck && b1_lck && b2_lck {
+        //println!("interact!");
+        self.interact(book, a_ref, b_ref, rdex);
+        success = true;
+      }
+
+      // Releases surrounding locks...
+      self.unlock_node_of(0, a1_ptr, a1_lck);
+      self.unlock_node_of(0, a2_ptr, a2_lck);
+      self.unlock_node_of(0, b1_ptr, b1_lck);
+      self.unlock_node_of(0, b2_ptr, b2_lck);
+    }
+
+    // Releases principal locks...
+    self.unlock_node_of(0, a_ptr, a_lck);
+    self.unlock_node_of(0, b_ptr, b_lck);
+
+    // If interaction failed, push redex back
+    if !success {
+      rdex.push((a_ptr, b_ptr));
+    }
+  }
+
+  // TODO:
+  // 1. Make alloc() thread safe;
+  // 2. Lock cacheline sized regions rather than single nodes;
+  // 3. Let threads push and pop from a task-stealing queue;
+  
+  pub fn parallel_reduce(&mut self, book: &Book) {
+    let mut rdex: Vec<(Ptr, Ptr)> = std::mem::replace(&mut self.rdex, vec![]);
+    std::thread::scope(|scope| {
+      todo!()
+    }).unwrap();
+  }
+
+
 }

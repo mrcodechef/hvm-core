@@ -283,7 +283,7 @@ pub fn lnet_to_net(lnet: &LNet, size: Option<usize>) -> Net {
     net.rdex.push((ptr1, ptr2));
   }
   if size.is_none() {
-    net.node = net.node[0 .. net.used].to_vec();
+    net.node.truncate(net.used);
   }
   return net;
 }
