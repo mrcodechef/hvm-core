@@ -2,7 +2,7 @@ use crate::core::{*};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Heap {
-  data: Vec<Ptr>,
+  data: Vec<u32>,
   next: usize,
   used: usize,
 }
@@ -10,7 +10,7 @@ pub struct Heap {
 impl Heap {
   pub fn new(size: usize) -> Heap {
     return Heap {
-      data: vec![NULL; size * 2],
+      data: vec![0; size * 2],
       next: 1,
       used: 0,
     };
@@ -61,14 +61,14 @@ impl Heap {
   #[inline(always)]
   pub fn get(&self, index: Val, port: Port) -> Ptr {
     unsafe {
-      return *self.data.get_unchecked((index * 2 + port) as usize);
+      return Ptr(*self.data.get_unchecked((index * 2 + port) as usize));
     }
   }
 
   #[inline(always)]
   pub fn set(&mut self, index: Val, port: Port, value: Ptr) {
     unsafe {
-      *self.data.get_unchecked_mut((index * 2 + port) as usize) = value;
+      *self.data.get_unchecked_mut((index * 2 + port) as usize) = value.0;
     }
   }
 
@@ -87,8 +87,8 @@ impl Heap {
     let root = self.data[1];
     let mut node = vec![];
     for i in 0 .. self.used {
-      node.push((self.data[(i+1)*2+0], self.data[(i+1)*2+1]));
+      node.push((Ptr(self.data[(i+1)*2+0]), Ptr(self.data[(i+1)*2+1])));
     }
-    return (root, node);
+    return (Ptr(root), node);
   }
 }
