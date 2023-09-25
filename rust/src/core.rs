@@ -35,6 +35,7 @@ pub const P2 : Port = 1;
 
 // A tagged pointer.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[repr(transparent)]
 pub struct Ptr(pub Val);
 
 // A interaction combinator net.

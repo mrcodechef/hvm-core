@@ -2,15 +2,15 @@ use crate::core::{*};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Heap {
-  pub data: Vec<Ptr>,
-  pub next: usize,
-  pub used: usize,
+  data: Vec<u32>,
+  next: usize,
+  used: usize,
 }
 
 impl Heap {
   pub fn new(size: usize) -> Heap {
     return Heap {
-      data: vec![NULL; size * 2],
+      data: vec![0; size * 2],
       next: 1,
       used: 0,
     };
@@ -60,12 +60,20 @@ impl Heap {
 
   #[inline(always)]
   pub fn at(&self, index: Val, port: Port) -> &Ptr {
-    return unsafe { self.data.get_unchecked((index * 2 + port) as usize) };
+    unsafe {
+      let val : &u32 = self.data.get_unchecked((index * 2 + port) as usize);
+      let ptr : &Ptr = std::mem::transmute(val);
+      return ptr;
+    }
   }
 
   #[inline(always)]
   pub fn at_mut(&mut self, index: Val, port: Port) -> &mut Ptr {
-    return unsafe { self.data.get_unchecked_mut((index * 2 + port) as usize) };
+    unsafe {
+      let val : &mut u32 = self.data.get_unchecked_mut((index * 2 + port) as usize);
+      let ptr : &mut Ptr = std::mem::transmute(val);
+      return ptr;
+    }
   }
 
   #[inline(always)]
@@ -93,8 +101,8 @@ impl Heap {
     let root = self.data[1];
     let mut node = vec![];
     for i in 0 .. self.used {
-      node.push((self.data[(i+1)*2+0], self.data[(i+1)*2+1]));
+      node.push((Ptr(self.data[(i+1)*2+0]), Ptr(self.data[(i+1)*2+1])));
     }
-    return (root, node);
+    return (Ptr(root), node);
   }
 }
