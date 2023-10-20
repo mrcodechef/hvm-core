@@ -1,87 +1,5 @@
 ## RUN
 
-Aqui está o fluxograma simplificado e o pseudocódigo para a implementação da estrutura `Ptr`. Essa estrutura contém várias funções que operam em valores do tipo `Ptr`. As funções lidam com várias operações, como checar os tipos, tags e valores da estrutura `Ptr`, bem como realizar cálculos e verificações.
-
-### Implementação da Estrutura `Ptr`
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Receba como entrada: "tag" (tag da Ptr), "val" (valor da Ptr)
-|
-V
-Crie uma nova instância de Ptr com o valor ((val << 4) | (tag como valor))
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Estrutura Ptr:
-    Função nova(tag, val):
-        Retorna uma nova instância de Ptr com o valor ((val << 4) | (tag como valor))
-
-    Função data():
-        Retorna o valor do objeto Ptr
-
-    Função tag():
-        Retorna a tag do objeto Ptr
-
-    Função val():
-        Retorna o valor do objeto Ptr
-
-    Função is_nil():
-        Retorna verdadeiro se o valor do objeto Ptr for igual a 0; caso contrário, retorna falso
-
-    Função is_var():
-        Retorna verdadeiro se a tag do objeto Ptr estiver no intervalo [VR1, VR2]; caso contrário, retorna falso
-
-    Função is_era():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a ERA; caso contrário, retorna falso
-
-    Função is_ctr():
-        Retorna verdadeiro se a tag do objeto Ptr estiver no intervalo maior ou igual a CT0
-
-    Função is_ref():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a REF; caso contrário, retorna falso
-
-    Função is_pri():
-        Retorna verdadeiro se a tag do objeto Ptr estiver no intervalo maior ou igual a REF
-
-    Função is_num():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a NUM; caso contrário, retorna falso
-
-    Função is_op1():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a OP1; caso contrário, retorna falso
-
-    Função is_op2():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a OP2; caso contrário, retorna falso
-
-    Função is_skp():
-        Retorna verdadeiro se a tag do objeto Ptr for ERA, NUM ou REF; caso contrário, retorna falso
-
-    Função is_mat():
-        Retorna verdadeiro se a tag do objeto Ptr for igual a MAT; caso contrário, retorna falso
-
-    Função has_loc():
-        Retorna verdadeiro se o objeto Ptr for uma variável (var), OP1, OP2, MAT ou CTR
-
-    Função adjust(loc):
-        Retorna uma nova instância de Ptr com a tag e valor ajustados com base na localização (loc)
-
-    Função can_skip(a, b):
-        Retorna verdadeiro se ambos a e b forem ERA ou ambos REF; caso contrário, retorna falso
-
-Fim da Estrutura Ptr
-```
-
-A estrutura `Ptr` possui várias funções para manipular e verificar valores do tipo `Ptr`, bem como funções para criar novas instâncias de `Ptr` com valores ajustados.
-
 ### Função `alloc` da Estrutura `Heap`
 
 A função `alloc` na estrutura `Heap` é responsável por alocar uma posição no array de dados, retornando o índice dessa posição. Aqui está um fluxograma simplificado e pseudocódigo para a função `alloc`:
@@ -160,8 +78,6 @@ Se o heap não estiver cheio e "next + size" for menor ou igual ao tamanho do ar
 |          |     |     |     |
 |          |     |     |     V
 |          |     |     |     Continue o loop
-|
-V
 Fim
 ```
 
@@ -169,144 +85,25 @@ Fim
 
 ```plaintext
 Função alloc(size):
-    Se size for igual a 0, retorne 0
-    
-    Se o heap não estiver cheio e next + size for menor ou igual ao tamanho do array:
-        Aloque espaço no heap para size unidades de dados a partir de next
-        used = used + size
-        next = next + size
-        Retorne next - size como o índice alocado
-    Senão:
-        O heap está cheio
-        Inicialize uma variável space como 0
-        
-        Enquanto True:
-            Se next for maior ou igual ao tamanho do array:
-                space = 0
-                next = 1
-            Senão, se a porta P1 do elemento na posição next for NIL:
-                space = space + 1
-                Se space for igual a size:
-                    used = used + size
-                    Retorne next - space como o índice alocado
+    Se o tamanho for igual a zero
+        Retorne 0
+    Senão, se o espaço não estiver cheio e houver espaço suficiente após o próximo
+        Aumente o contador de espaço usado pelo tamanho
+        Atualize a próxima posição disponível
+        Retorne a posição anterior da próxima disponível como um valor
+    Senão
+        Defina o espaço como cheio
+        Enquanto houver um espaço contíguo de tamanho disponível
+            Se o próximo estiver além do limite, reinicie a partir do início
+            Se a porta P1 da posição próxima for nula, incremente o contador de espaço em um
+            Senão, redefina o contador de espaço para zero
+            Atualize a posição próxima
+            Se o contador de espaço atingir o tamanho desejado
+                Aumente o contador de espaço usado pelo tamanho
+                Retorne a posição anterior da próxima disponível como um valor
 ```
 
 Essa função é usada para alocar espaço no array de dados na estrutura `Heap`. Ela verifica se o heap não está cheio e se há espaço contíguo disponível para alocar a quantidade especificada de dados. Se o heap estiver cheio ou não houver espaço contíguo disponível, ele realiza uma pesquisa para encontrar espaço livre no heap e, em seguida, aloca e retorna o índice apropriado. O contador "used" é aumentado para rastrear as posições alocadas.
-
-### Função `free` da Estrutura `Heap`
-
-A função `free` na estrutura `Heap` é responsável por marcar uma posição no array de dados como livre, indicando que a mesma está disponível para alocação posterior. Aqui está um fluxograma simplificado e pseudocódigo para a função `free`:
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Receba como entrada: "index" (posição no array)
-|
-V
-Diminua o contador "used" em 1
-|
-V
-Defina os valores nas portas P1 e P2 do elemento na posição "index" como NULL
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função free(index):
-    used = used - 1  // Diminua o contador "used" em 1
-    data[index].P1 = NULL  // Defina a porta P1 do elemento na posição "index" como NULL
-    data[index].P2 = NULL  // Defina a porta P2 do elemento na posição "index" como NULL
-```
-
-Essa função é usada para liberar uma posição no array de dados na estrutura `Heap` após seu uso. A diminuição do contador `used` indica que menos elementos estão em uso no heap. As portas P1 e P2 do elemento na posição "index" são definidas como NULL, indicando que não há mais referências alocadas nessa posição.
-
-### Função `get` da Estrutura `Heap`
-
-A função `get` é usada na estrutura `Heap` para recuperar o valor associado a uma determinada posição (`index`) e porta (`port`) no array de dados. Aqui está um fluxograma simplificado e pseudocódigo para a função `get`:
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Receba como entrada: "index" (posição no array), "port" (porta para acessar)
-|
-V
-Acesse o elemento na posição "index" no array "data"
-|
-V
-Se "port" for igual a P1:
-  |
-  |-> Retorne o valor na porta P1 do elemento
-|
-Senão:
-  |
-  |-> Retorne o valor na porta P2 do elemento
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função get(index, port):
-    elemento = data[index]  // Acesse o elemento na posição "index" no array "data"
-    Se port for igual a P1:
-        Retorne elemento.P1  // Retorne o valor na porta P1 do elemento
-    Senão:
-        Retorne elemento.P2  // Retorne o valor na porta P2 do elemento
-```
-
-Essa função é usada para obter o valor associado às portas P1 ou P2 de um elemento na posição "index" do array "data" na estrutura `Heap`.
-
-### Função `set` da Estrutura `Heap`
-
-A função `set` é utilizada na estrutura `Heap` para atribuir valores a elementos em um array de dados. Ela é uma operação essencial para manipular a memória do heap.
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Receba como entrada: "index" (posição no array), "port" (porta para acessar), "value" (valor a ser atribuído)
-|
-V
-Acesse o elemento na posição "index" no array "data"
-|
-V
-Se "port" for igual a P1:
-  |
-  |-> Atribua o valor "value" à porta P1 do elemento
-|
-Senão:
-  |
-  |-> Atribua o valor "value" à porta P2 do elemento
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função set(index, port, value):
-    elemento = data[index]  // Acesse o elemento na posição "index" no array "data"
-    Se port for igual a P1:
-        elemento.P1 = value  // Atribua o valor "value" à porta P1 do elemento
-    Senão:
-        elemento.P2 = value  // Atribua o valor "value" à porta P2 do elemento
-```
-
-Essa função é usada para definir os valores das portas P1 e P2 de um elemento na posição "index" do array "data" na estrutura `Heap`.
 
 ### Função `compact` da Estrutura `Heap`
 
@@ -329,8 +126,6 @@ Enquanto o valor na posição de índice em "data" não for (NULL, NULL):
 |
 V
 Retorne a lista "node" como resultado da função
-|
-V
 Fim
 ```
 
@@ -338,99 +133,19 @@ Fim
 
 ```plaintext
 Função compact():
-    node = Lista vazia
-    índice = 0
-    Enquanto o valor na posição de índice em "data" não for (NULL, NULL):
-        node.adicionar(data[índice])
-        índice = índice + 1
-    Retorne node
+    Crie uma lista vazia chamada "nó".
+    Repita enquanto o comprimento de "nó" for menor que o comprimento dos dados da heap:
+        Se o primeiro componente do nó atual não for NULL ou o segundo componente não for NULL, adicione-o à lista "nó".
+        Caso contrário, saia do loop.
+    Retorne o "nó".
+Fim da Função
 ```
 
 Esta função cria uma lista chamada "node" e preenche-a com os valores contidos em "data" até encontrar um par de valores (NULL, NULL). Em seguida, retorna a lista "node" como resultado.
 
-### Função `to_def` da Estrutura `Net`
-
-A função to_def da Estrutura Net tem a finalidade de criar uma nova instância da estrutura Def, que é um componente de dados.
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Crie uma nova instância da estrutura Def chamada "def"
-|
-V
-Defina a entrada "def.rdex" como o valor de "net.rdex"
-|
-V
-Para cada elemento (p1, p2) em "net.heap.compact()":
-|   |
-|   V
-|   Adicione (p1, p2) à lista "def.node"
-|
-V
-Retorne a instância "def"
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função to_def(net):
-    def = Nova instância da estrutura Def
-    def.rdex = net.rdex
-    Para cada p1, p2 em net.heap.compact():
-        def.node.Adicione((p1, p2))
-    Retorne def
-```
-
-O processo começa pela criação dessa instância, chamada de "def". Em seguida, o valor de "def.rdex" é definido como o valor de "net.rdex". Posteriormente, a função percorre cada par de elementos (p1, p2) presente na saída da função "net.heap.compact()" e os adiciona à lista "def.node". Uma vez que todos os elementos tenham sido processados, a função retorna a instância "def", que agora contém os dados correspondentes aos elementos da estrutura Net em um formato específico para a estrutura Def. Isso possibilita a conversão e transformação de dados de um formato para outro, útil em muitos contextos de programação e processamento de informações.
-
-### Função `from_def` da Estrutura `Net`
-
-A função from_def da Estrutura Net tem o propósito de criar uma nova instância da estrutura Net com base em uma instância da estrutura Def.
-
-**Fluxograma**:
-
-```plaintext
-Início
-|
-V
-Crie uma nova instância da estrutura Net chamada "net"
-|
-V
-Para cada elemento (i, (p1, p2)) em def.node:
-|   |
-|   V
-|   Atualize a entrada na posição i da instância "net.heap" com p1 e p2
-|
-V
-Defina a variável "net.rdex" como def.rdex
-|
-V
-Retorne a instância "net"
-|
-V
-Fim
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função from_def(def):
-    net = Nova instância da estrutura Net
-    Para cada i, (p1, p2) em def.node:
-        net.heap.Atualize(i, p1, p2)
-    net.rdex = def.rdex
-    Retorne net
-```
-
- O processo começa com a criação da nova instância de Net, chamada "net". Em seguida, a função itera sobre os elementos em def.node, que consistem em índices (i) e pares de elementos (p1, p2). Para cada um deles, a função atualiza a entrada correspondente na instância "net.heap" com os valores p1 e p2. Após a conclusão dessa etapa, a função define a variável "net.rdex" com o valor de "def.rdex". Finalmente, a instância "net" é retornada, agora contendo os dados e configurações da instância "def" no formato da estrutura "Net". Isso permite a conversão e transformação de dados de uma estrutura para outra, facilitando o uso e manipulação dessas informações em diferentes contextos.
-
 ### Função `link` da Estrutura `Net`
+
+A função `link` da Estrutura `Net` tem a finalidade de estabelecer conexões entre elementos, dependendo de seus tipos.
 
 **Fluxograma**:
 
@@ -450,7 +165,6 @@ Se ambos são pri:
 |   |   Sim
 |   |   Incremente eras em 1
 |   |   |
-|   |   V
 |   |   Fim
 |   |
 |   V
@@ -459,7 +173,6 @@ Se ambos são pri:
 |   V
 |   Adicione a tupla (a, b) em rdex
 |   |
-|   V
 |   Fim
 |
 V
@@ -467,7 +180,6 @@ Se a é var:
 |   Sim
 |   Substitua o destino de a pelo valor de b
 |   |
-|   V
 |   Fim
 |
 V
@@ -475,10 +187,7 @@ Se b é var:
 |   Sim
 |   Substitua o destino de b pelo valor de a
 |   |
-|   V
 |   Fim
-|
-V
 Fim
 ```
 
@@ -498,13 +207,6 @@ Função link(a, b):
     Fim
 ```
 
-A função `link` da Estrutura `Net` tem a finalidade de estabelecer conexões entre elementos, dependendo de seus tipos. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
-
-1. A função começa verificando os tipos de `a` e `b`.
-2. Se ambos `a` e `b` forem elementos pri (prioritários), ela verifica se eles podem ser pulados. Se forem puláveis, incrementa a contagem de "eras" em 1. Caso contrário, adiciona a tupla (a, b) à lista `rdex`, que armazena as conexões.
-3. Se `a` for uma variável (`var`), a função substitui o destino de `a` pelo valor de `b`.
-4. Se `b` for uma variável (`var`), a função substitui o destino de `b` pelo valor de `a`.
-
 Dessa forma, a função `link` realiza a ligação ou conexão entre elementos da estrutura `Net` de acordo com as regras especificadas para cada tipo de elemento, seja pri (prioritário) ou var (variável). Isso permite a criação e manipulação de conexões entre elementos da rede, o que é útil em diversas aplicações, como sistemas de inferência e processamento de informações.
 
 ### Função `interact` da Estrutura `Net`
@@ -514,222 +216,57 @@ A função `interact` da Estrutura `Net` é uma função complexa que define as 
 **Fluxograma**:
 
 ```plaintext
-Inicio
-|
-V
-Verifica tipo de A e B
-|
-V
-Se A e B são ref e skp
-|
-V
-  - Incrementa eras
-|
-V
-Se A e B são ctr e ctr e suas tags são iguais
-|
-V
-  - Executa anni(A, B)
-|
-V
-Se A e B são ctr e ctr e suas tags são diferentes
-|
-V
-  - Executa comm(A, B)
-|
-V
-Se A ou B são era
-|
-V
-  - Incrementa eras
-|
-V
-Se A é ctr e B é era
-|
-V
-  - Executa era2(A)
-|
-V
-Se A é era e B é ctr
-|
-V
-  - Executa era2(B)
-|
-V
-Se A é ref e B é era
-|
-V
-  - Incrementa eras
-|
-V
-Se A é era e B é ref
-|
-V
-  - Incrementa eras
-|
-V
-Se A e B são era
-|
-V
-  - Incrementa eras
-|
-V
-Se A é var
-|
-V
-  - Incrementa eras
-  - Chama link(A, B)
-|
-V
-Se B é var
-|
-V
-  - Incrementa eras
-  - Chama link(B, A)
-|
-V
-Se A é ctr e B é num
-|
-V
-  - Chama copy(A, B)
-|
-V
-Se A é num e B é ctr
-|
-V
-  - Chama copy(B, A)
-|
-V
-Se A e B são num
-|
-V
-  - Incrementa eras
-|
-V
-Se A é op2 e B é num
-|
-V
-  - Chama op2n(A, B)
-|
-V
-Se A é num e B é op2
-|
-V
-  - Chama op2n(B, A)
-|
-V
-Se A é op1 e B é num
-|
-V
-  - Chama op1n(A, B)
-|
-V
-Se A é num e B é op1
-|
-V
-  - Chama op1n(B, A)
-|
-V
-Se A é mat e B é num
-|
-V
-  - Chama mtch(A, B)
-|
-V
-Se A é num e B é mat
-|
-V
-  - Chama mtch(B, A)
-|
-V
-Se A é mat e B é ctr
-|
-V
-  - Executa comm(A, B)
-|
-V
-Se A é ctr e B é mat
-|
-V
-  - Executa comm(B, A)
-|
-V
-Se A é mat e B é era
-|
-V
-  - Executa era2(A)
-|
-V
-Se A é era e B é mat
-|
-V
-  - Executa era2(B)
-|
-V
-Fim
+Função interact(a, b)
+    Se a e b são do mesmo tipo de nó (por exemplo, ambos são do tipo CTR)
+        Se a é igual a b (com base em algum critério específico)
+            Chamar a função anni(a, b)
+        Senão
+            Chamar a função comm(a, b)
+    Senão se a é um tipo de nó específico (por exemplo, CTR)
+        Se a e b têm o mesmo tag
+            Chamar a função anni(a, b)
+        Senão
+            Chamar a função comm(a, b)
+    Senão se b é um tipo de nó específico (por exemplo, CTR)
+        Chamar a função comm(b, a)
+    Senão
+        Chamar a função era2(a)
+    Fim da Função
 ```
 
 **Pseudocódigo**:
 
 ```plaintext
-Função interact(a, b):
-    Se a for ref e b for pri e não for skp:
-        Atribua a = deref(book, a, b)
-    Senão, se b for ref e a for pri e não for skp:
-        Atribua b = deref(book, b, a)
-
-    Se a for ctr e b for ctr e a.tag for igual a b.tag:
-        Execute anni(a, b)
-    Senão, se a for ctr e b for ctr e a.tag for diferente de b.tag:
-        Execute comm(a, b)
-    Senão, se a for era ou b for era:
-        Incremente eras em 1
-    Senão, se a for ctr e b for era:
-        Execute era2(a)
-    Senão, se a for era e b for ctr:
-        Execute era2(b)
-    Senão, se a for ref e b for era:
-        Incremente eras em 1
-    Senão, se a for era e b for ref:
-        Incremente eras em 1
-    Senão, se a e b forem ambos era:
-        Incremente eras em 1
-    Senão, se a for var:
-        Incremente eras em 1
-    Senão, se b for var:
-        Incremente eras em 1
-    Senão, se a for ctr e b for num:
-        Execute copy(a, b)
-    Senão, se a for num e b for ctr:
-        Execute copy(b, a)
-    Senão, se a for num e b for era:
-        Incremente eras em 1
-    Senão, se a for era e b for num:
-        Incremente eras em 1
-    Senão, se a e b forem ambos num:
-        Incremente eras em 1
-    Senão, se a for op2 e b for num:
-        Execute op2n(a, b)
-    Senão, se a for num e b for op2:
-        Execute op2n(b, a)
-    Senão, se a for op1 e b for num:
-        Execute op1n(a, b)
-    Senão, se a for num e b for op1:
-        Execute op1n(b, a)
-    Senão, se a for mat e b for num:
-        Execute mtch(a, b)
-    Senão, se a for num e b for mat:
-        Execute mtch(b, a)
-    Senão, se a for mat e b for ctr:
-        Execute comm(a, b)
-    Senão, se a for ctr e b for mat:
-        Execute comm(b, a)
-    Senão, se a for mat e b for era:
-        Execute era2(a)
-    Senão, se a for era e b for mat:
-        Execute era2(b)
-    Senão:
-        Emita um erro
+Início
+ |
+ V
+A e B são do mesmo tipo de nó?
+ |
+ V
+Sim
+ |
+ |---[A é igual a B?]---> Não
+ |      |
+ |      |---[Chamar a função anni(A, B)]---> Fim
+ V
+Não
+ |
+ |---[A é um tipo de nó específico (por exemplo, CTR)?]---> Não
+ |      |
+ |      |---[B é um tipo de nó específico (por exemplo, CTR)?]---> Não
+ |      |      |
+ |      |      |---[Chamar a função era2(A)]---> Fim
+ |      |
+ |      |---[Chamar a função comm(B, A)]---> Fim
+ |
+ |---[A e B têm o mesmo tag?]---> Não
+ |      |
+ |      |---[Chamar a função comm(A, B)]---> Fim
+ V
+Sim
+ |
+ |---[Chamar a função anni(A, B)]---> Fim
+Fim
 ```
 
 A função `interact` é fundamental para as operações de interação entre diferentes tipos de elementos na estrutura `Net`, permitindo a realização de diversas operações de processamento de informações e lógica na rede.
@@ -754,7 +291,6 @@ V
 Libere a memória referente a `a`
 Libere a memória referente a `b`
 |
-V
 Fim
 ```
 
@@ -977,30 +513,32 @@ A função `copy` da Estrutura `Net` tem o propósito de realizar uma operação
 
 ```plaintext
 Início
-|
-V
-Incremente o valor de `comm` em 1
-Obtenha o valor de P1 de a.val()
-Obtenha o valor de P2 de a.val()
-Link do valor de P1 com b
-Link do valor de P2 com b
-Libere o valor de a.val()
-|
-V
+ |
+ V
+Obter valor de A
+ |
+ V
+Criar uma cópia do nó B
+ |
+ |
+ V
+Definir os alvos das portas principais de A para apontar para a cópia de B
+ |
+ |
+ V
+Liberar o nó A
 Fim
 ```
 
 **Pseudocódigo**:
 
 ```plaintext
-Função copy(a, b):
-    Incremente o valor de `comm` em 1
-    Obtenha o valor de P1 de a.val()
-    Obtenha o valor de P2 de a.val()
-    Link do valor de P1 com b
-    Link do valor de P2 com b
-    Libere o valor de a.val()
-    Retorne
+Função copy(a, b)
+    Obtém o valor do nó A.
+    Cria uma cópia do nó B.
+    Define os alvos das portas principais de A para apontar para a cópia de B.
+    Libera o nó A.
+Fim da Função
 ```
 
 Essa função é usada para copiar informações específicas de um elemento para outro na estrutura `Net`, o que pode ser útil em diversas aplicações, como sistemas de processamento de dados e lógica. O incremento de `comm` é importante para acompanhar e controlar as operações de cópia ao longo do tempo.
@@ -1170,9 +708,9 @@ Fim
 **Diagrama**:
 
 ```
-A1 --[#X}-- #Y
+A2 --[#X}-- #Y
 ~~~~~~~~~~~~~~ OP1-NUM
-A1 -- #Z
+A2 -- #Z
 ```
 
 **Pseudocódigo**:
@@ -1200,142 +738,49 @@ A função `prim` da Estrutura `Net` desempenha o papel de realizar operações 
 
 ```plaintext
 Início
-|
-V
-Obtenha o valor do operador a (a_opr) de a
-Obtenha o valor do operador b (b_opr) de b (não usado por enquanto)
-Obtenha o valor a_val de a
-Obtenha o valor b_val de b
-|
-V
-Se o operador a_opr for igual a USE:
-|
-|----> Crie um novo valor (result) com os bits 24-28 iguais aos bits 0-3 de b_val e os bits 0-23 de a_val
-|
-V
-Senão, se o operador a_opr for igual a ADD:
-|
-|----> Crie um novo valor (result) com a soma de a_val e b_val (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a SUB:
-|
-|----> Crie um novo valor (result) com a subtração de a_val e b_val (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a MUL:
-|
-|----> Crie um novo valor (result) com a multiplicação de a_val e b_val (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a DIV:
-|
-|----> Crie um novo valor (result) com a divisão de a_val por b_val (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a MOD:
-|
-|----> Crie um novo valor (result) com o módulo da divisão de a_val por b_val (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a EQ:
-|
-|----> Crie um novo valor (result) com 1 se a_val for igual a b_val, caso contrário, 0
-|
-V
-Senão, se o operador a_opr for igual a NE:
-|
-|----> Crie um novo valor (result) com 1 se a_val for diferente de b_val, caso contrário, 0
-|
-V
-Senão, se o operador a_opr for igual a LT:
-|
-|----> Crie um novo valor (result) com 1 se a_val for menor que b_val, caso contrário, 0
-|
-V
-Senão, se o operador a_opr for igual a GT:
-|
-|----> Crie um novo valor (result) com 1 se a_val for maior que b_val, caso contrário, 0
-|
-V
-Senão, se o operador a_opr for igual a AND:
-|
-|----> Crie um novo valor (result) com a operação lógica AND entre a_val e b_val
-|
-V
-Senão, se o operador a_opr for igual a OR:
-|
-|----> Crie um novo valor (result) com a operação lógica OR entre a_val e b_val
-|
-V
-Senão, se o operador a_opr for igual a XOR:
-|
-|----> Crie um novo valor (result) com a operação lógica XOR entre a_val e b_val
-|
-V
-Senão, se o operador a_opr for igual a NOT:
-|
-|----> Crie um novo valor (result) com a operação lógica NOT de b_val
-|
-V
-Senão, se o operador a_opr for igual a LSH:
-|
-|----> Crie um novo valor (result) com o deslocamento à esquerda de a_val em b_val posições (aplicando operação de módulo 2^24)
-|
-V
-Senão, se o operador a_opr for igual a RSH:
-|
-|----> Crie um novo valor (result) com o deslocamento à direita de a_val em b_val posições (aplicando operação de módulo 2^24)
-|
-V
+ |
+ V
+Obter operador de A
+ |
+ V
+Obter valor de A
+ |
+ V
+Obter operador de B [não usado neste exemplo]
+ |
+ V
+Obter valor de B
+ |
+ |
+ V
+Operador de A é USE?
+ |
+ |---[Sim]---> Define operador do resultado como operador de B
+ | 
+ |---[Não]---> Realizar a operação correspondente com base no operador de A
+             |
+             |
+             V
+             Retornar o resultado como um novo nó
 Fim
 ```
 
 **Pseudocódigo**:
 
 ```plaintext
-Função prim(a, b):
-    a_opr <- Obtenha o valor do operador a (a_opr) de a
-    b_opr <- Obtenha o valor do operador b (b_opr) de b (não usado por enquanto)
-    a_val <- Obtenha o valor a_val de a
-    b_val <- Obtenha o valor b_val de b
-
-    Se o operador a_opr for igual a USE:
-        Crie um novo valor (result) com os bits 24-28 iguais aos bits 0-3 de b_val e os bits 0-23 de a_val
-    Senão, se o operador a_opr for igual a ADD:
-        Crie um novo valor (result) com a soma de a_val e b_val (aplicando operação de módulo 2^24)
-    Senão, se o operador a_opr for igual a SUB:
-        Crie um novo valor (result) com a subtração de a_val e b_val (aplicando operação de módulo 2^24)
-    Senão, se o operador a_opr for igual a MUL:
-        Crie um novo valor (result) com a multiplicação de a_val e b_val (aplicando operação de módulo 2^24)
-    Senão, se o operador a_opr for igual a DIV:
-        Crie um novo valor (result) com a divisão de a_val por b_val (aplicando operação de módulo 2^24)
-    Senão, se
-
- o operador a_opr for igual a MOD:
-        Crie um novo valor (result) com o módulo da divisão de a_val por b_val (aplicando operação de módulo 2^24)
-    Senão, se o operador a_opr for igual a EQ:
-        Crie um novo valor (result) com 1 se a_val for igual a b_val, caso contrário, 0
-    Senão, se o operador a_opr for igual a NE:
-        Crie um novo valor (result) com 1 se a_val for diferente de b_val, caso contrário, 0
-    Senão, se o operador a_opr for igual a LT:
-        Crie um novo valor (result) com 1 se a_val for menor que b_val, caso contrário, 0
-    Senão, se o operador a_opr for igual a GT:
-        Crie um novo valor (result) com 1 se a_val for maior que b_val, caso contrário, 0
-    Senão, se o operador a_opr for igual a AND:
-        Crie um novo valor (result) com a operação lógica AND entre a_val e b_val
-    Senão, se o operador a_opr for igual a OR:
-        Crie um novo valor (result) com a operação lógica OR entre a_val e b_val
-    Senão, se o operador a_opr for igual a XOR:
-        Crie um novo valor (result) com a operação lógica XOR entre a_val e b_val
-    Senão, se o operador a_opr for igual a NOT:
-        Crie um novo valor (result) com a operação lógica NOT de b_val
-    Senão, se o operador a_opr for igual a LSH:
-        Crie um novo valor (result) com o deslocamento à esquerda de a_val em b_val posições (aplicando operação de módulo 2^24)
-    Senão, se o operador a_opr for igual a RSH:
-        Crie um novo valor (result) com o deslocamento à direita de a_val em b_val posições (aplicando operação de módulo 2^24)
+Função prim(a, b)
+    Obtém o operador do nó A (os bits superiores).
+    Obtém o valor do nó A (os bits inferiores).
+    Obtém o operador do nó B (os bits superiores) [não usado neste exemplo].
+    Obtém o valor do nó B (os bits inferiores).
     
-    Retorne result
+    Se o operador do nó A é USE
+        Define o operador do resultado como o operador do nó B.
+    Se não
+        Realiza a operação correspondente com base no operador do nó A.
+    
+    Retorna o resultado como um novo nó.
+Fim da Função
 ```
 
 A função retorna o valor `result`, que é o resultado da operação determinada pelo operador `a_opr`. Essa função permite realizar várias operações matemáticas e lógicas com os valores contidos nas estruturas `a` e `b`.
@@ -1466,7 +911,6 @@ V
   V
 Retorna o ptr após todas as expansões
 |
-V
 Fim
 ```
 
@@ -1513,39 +957,28 @@ V
 Obtém o alvo (ptr) usando a função get_target
 |
 V
-Se o alvo (ptr) for um contador (CTR)
+Se ptr for um ctr então
+|    
+|--> Expanda o contador para os portos auxiliares (VR1 e VR2)
 |
 V
-  Expande a cabeça do contador (CTR) usando as sub-funções expand para VR1 e VR2
-|
-V
-Senão, se o alvo (ptr) for uma referência (REF)
-|
-V
-  Chamada da função deref com o livro (book), o alvo (ptr) e a direção (dir)
-  |
-  V
-  O valor retornado da função deref é definido como o novo alvo (ptr)
-  |
-  V
-  Define o novo alvo (ptr) como o alvo da direção (dir)
-|
-V
+Senão, se ptr for uma referência então
+|    
+|--> Expanda a referência e atualize o ponteiro de destino com a expansão
 Fim
 ```
 
 **Pseudocódigo**:
 
 ```plaintext
-Função expand(book, dir):
+Função expand(net, book, dir):
     Alvo (ptr) <- Obtenha o alvo (ptr) usando a função get_target
+    Se ptr for um ctr então:
+        Expanda o contador para os portos auxiliares (VR1 e VR2)
+    Senão, se ptr for uma referência então:
+        Expanda a referência e atualize o ponteiro de destino com a expansão
+Fim da Função
 
-    Se o alvo (ptr) for um contador (CTR):
-        Expande a cabeça do contador (CTR) chamando expand para VR1
-        Expande a cabeça do contador (CTR) chamando expand para VR2
-    Senão, se o alvo (ptr) for uma referência (REF):
-        Novo alvo (exp) <- Chamada da função deref com o livro book, o alvo (ptr) e a direção (dir)
-        Define o novo alvo (exp) como o alvo da direção (dir)
 ```
 
 Essa função é fundamental para a manipulação de ponteiros e redes na estrutura `Net`, permitindo a exploração de estruturas de dados mais complexas e a realização de operações em seus elementos. Ela expande tanto contadores quanto referências, garantindo que os ponteiros sejam desreferenciados e manipulados adequadamente.
@@ -1560,24 +993,14 @@ A função `reduce` da Estrutura `Net` é responsável por realizar a redução 
 Início
 |
 V
-Copia a lista de redexes para rdex
+Enquanto houver redexes na rede
 |
 V
-Enquanto rdex não estiver vazio
+Para cada redex (a, b) na rede
 |
 V
-  Para cada redex (a, b) em rdex
-  |
-  V
-    Chama a função interact com os redexes (a, b) e o livro (book)
-  |
-  V
-  Limpa a lista de redexes (rdex)
-  |
-  V
-  Copia a lista de redexes novamente
+Chame a função "interact" com os argumentos (net, book, a, b)
 |
-V
 Fim
 ```
 
@@ -1585,14 +1008,12 @@ Fim
 
 ```plaintext
 Função reduce(book):
-    Copia a lista de redexes para rdex
-
-    Enquanto rdex não estiver vazio:
-        Para cada redex (a, b) em rdex:
-            Chama a função interact com os redexes (a, b) e o livro book
-
-        Limpa a lista de redexes (rdex)
-        Copia a lista de redexes novamente
+    Enquanto houver redexes na rede:
+        Para cada redex (a, b) na rede:
+            Chame a função "interact" com os argumentos (net, book, a, b)
+        Fim do loop
+    Fim do loop
+Fim
 ```
 
 Essa função desempenha um papel crucial na execução de reduções na rede, permitindo que os redexes sejam identificados e manipulados de acordo com as regras específicas da estrutura `Net`. Isso é fundamental para a computação realizada pela rede.
