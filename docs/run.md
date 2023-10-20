@@ -128,6 +128,7 @@ Esta função cria uma lista chamada "node" e preenche-a com os valores contidos
 
 <details>
   <summary>Fluxograma</summary>
+  
 ```plaintext
 Início
 |
@@ -145,6 +146,7 @@ V
 Retorne a lista "node" como resultado da função
 Fim
 ```
+
 </details>
 
 ### Função `link` da Estrutura `Net`
@@ -509,6 +511,7 @@ TODO
 Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net` durante uma operação de passagem de informações, que pode ser útil em diversas aplicações, como sistemas de comunicação e processamento de dados. O incremento de `comm` é importante para acompanhar e controlar as operações de comunicação ao longo do tempo.
 <details>
   <summary>Fluxograma</summary>
+
 ```plaintext
 Início
 |
@@ -522,6 +525,7 @@ Link do valor de P2 com um valor derivado de `a`
 V
 Fim
 ```
+
 </details>
 
 ### Função `copy` da Estrutura `Net`
@@ -543,6 +547,7 @@ Essa função é usada para copiar informações específicas de um elemento par
 
 <details>
   <summary>Fluxograma</summary>
+
 ```plaintext
 Início
  |
@@ -561,6 +566,7 @@ Definir os alvos das portas principais de A para apontar para a cópia de B
 Liberar o nó A
 Fim
 ```
+
 </details>
 
 ### Função `era2` da Estrutura `Net`
@@ -595,6 +601,7 @@ Essa função é usada para realizar operações de apagamento de informações 
 
 <details>
   <summary>Fluxograma</summary>
+
 ```plaintext
 Início
 |
@@ -609,6 +616,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+
 </details>
 
 ### Função `era1` da Estrutura `Net`
@@ -638,6 +646,7 @@ Essa função é usada para realizar operações de apagamento específico de in
 
 <details>
   <summary>Fluxograma</summary>
+
 ```plaintext
 Início
 |
@@ -650,6 +659,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+
 </details>
 
 ### Função `op2n` da Estrutura `Net`
@@ -738,6 +748,7 @@ Essa função é usada para realizar operações específicas envolvendo número
 
 <details>
   <summary>Fluxograma</summary>
+  
 ```plaintext
 Início
 |
@@ -754,6 +765,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+
 </details>
 
 ### Função `prim` da Estrutura `Net`
@@ -782,6 +794,7 @@ A função retorna o valor `result`, que é o resultado da operação determinad
 
 <details>
   <summary>Fluxograma</summary>
+  
 ```plaintext
 Início
  |
@@ -810,6 +823,7 @@ Operador de A é USE?
              Retornar o resultado como um novo nó
 Fim
 ```
+
 </details>
 
 ### Função `mtch` da Estrutura `Net`
@@ -998,6 +1012,7 @@ Essa função é fundamental para a manipulação de ponteiros e redes na estrut
 
 <details>
   <summary>Fluxograma</summary>
+  
 ```plaintext
 Início
 |
@@ -1015,6 +1030,7 @@ Senão, se ptr for uma referência então
 |--> Expanda a referência e atualize o ponteiro de destino com a expansão
 Fim
 ```
+
 </details>
 
 ### Função `reduce` da Estrutura `Net`
