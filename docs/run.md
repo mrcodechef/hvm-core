@@ -1,304 +1,303 @@
 ## RUN
 
-### Função `alloc` da Estrutura `Heap`
+### `alloc` Function of the `Heap` Structure
 
-A função `alloc` na estrutura `Heap` é responsável por alocar uma posição no array de dados, retornando o índice dessa posição. Aqui está um fluxograma simplificado e pseudocódigo para a função `alloc`:
+The `alloc` function in the `Heap` structure is responsible for allocating a position in the data array and returning the index of that position. Here is a simplified flowchart and pseudocode for the `alloc` function:
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função alloc(size):
-    Se o tamanho for igual a zero
-        Retorne 0
-    Senão, se o espaço não estiver cheio e houver espaço suficiente após o próximo
-        Aumente o contador de espaço usado pelo tamanho
-        Atualize a próxima posição disponível
-        Retorne a posição anterior da próxima disponível como um valor
-    Senão
-        Defina o espaço como cheio
-        Enquanto houver um espaço contíguo de tamanho disponível
-            Se o próximo estiver além do limite, reinicie a partir do início
-            Se a porta P1 da posição próxima for nula, incremente o contador de espaço em um
-            Senão, redefina o contador de espaço para zero
-            Atualize a posição próxima
-            Se o contador de espaço atingir o tamanho desejado
-                Aumente o contador de espaço usado pelo tamanho
-                Retorne a posição anterior da próxima disponível como um valor
+Function alloc(size):
+    If size equals zero
+        Return 0
+    Else, if space is not full and there is enough space after the next
+        Increase the space used counter by the size
+        Update the next available position
+        Return the previous position of the next available as a value
+    Else
+        Set space as full
+        While there is contiguous space of the desired size available
+            If the next is beyond the limit, restart from the beginning
+            If the P1 door of the next position is null, increment the space counter by one
+            Else, reset the space counter to zero
+            Update the next position
+            If the space counter reaches the desired size
+                Increase the space used counter by the size
+                Return the previous position of the next available as a value
 ```
 
-Essa função é usada para alocar espaço no array de dados na estrutura `Heap`. Ela verifica se o heap não está cheio e se há espaço contíguo disponível para alocar a quantidade especificada de dados. Se o heap estiver cheio ou não houver espaço contíguo disponível, ele realiza uma pesquisa para encontrar espaço livre no heap e, em seguida, aloca e retorna o índice apropriado. O contador "used" é aumentado para rastrear as posições alocadas.
+This function is used to allocate space in the data array within the `Heap` structure. It checks whether the heap is not full and if there is contiguous space available to allocate the specified amount of data. If the heap is full or there is no contiguous space available, it performs a search to find free space within the heap and then allocates and returns the appropriate index. The "used" counter is increased to track the allocated positions.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Receba como entrada: "size" (tamanho da alocação)
+Receive as input: "size" (allocation size)
 |
 V
-Se "size" for igual a 0, retorne 0
+If "size" equals 0, return 0
 |
 V
-Se o heap não estiver cheio e "next + size" for menor ou igual ao tamanho do array:
+If the heap is not full and "next + size" is less than or equal to the array size:
 |
-|--> Sim
+|--> Yes
 |     |
 |     V
-|     Aloque espaço no heap para "size" unidades de dados a partir de "next"
+|     Allocate space in the heap for "size" units of data starting from "next"
 |     |
 |     V
-|     Aumente o contador "used" em "size"
+|     Increase the "used" counter by "size"
 |     |
 |     V
-|     Atualize "next" para "next + size"
+|     Update "next" to "next + size"
 |     |
 |     V
-|     Retorne "next - size" como o índice alocado
+|     Return "next - size" as the allocated index
 |
-|--> Não
+|--> No
 |     |
 |     V
-|     O heap está cheio
+|     The heap is full
 |     |
 |     V
-|     Inicialize uma variável "space" como 0
+|     Initialize a variable "space" as 0
 |     |
 |     |--> Loop
 |          |
 |          V
-|          Se "next" for maior ou igual ao tamanho do array:
+|          If "next" is greater than or equal to the array size:
 |          |
-|          |--> Sim
+|          |--> Yes
 |          |     |
 |          |     V
-|          |     Defina "space" como 0 e "next" como 1
+|          |     Set "space" to 0 and "next" to 1
 |          |     |
 |          |     V
-|          |     Continue o loop
+|          |     Continue the loop
 |          |
-|          |--> Não
+|          |--> No
 |          |     |
 |          |     V
-|          |     Se a porta P1 do elemento na posição "next" for NIL:
+|          |     If the P1 door of the element at position "next" is NIL:
 |          |     |
-|          |     |--> Sim
+|          |     |--> Yes
 |          |     |     |
 |          |     |     V
-|          |     |     Incremente "space" em 1
+|          |     |     Increment "space" by 1
 |          |     |     |
 |          |     |     V
-|          |     |     Se "space" for igual a "size":
+|          |     |     If "space" equals "size":
 |          |     |     |
-|          |     |     |--> Sim
+|          |     |     |--> Yes
 |          |     |     |     |
 |          |     |     |     V
-|          |     |     |     Incremente "used" em "size"
+|          |     |     |     Increase "used" by "size"
 |          |     |     |     |
 |          |     |     |     V
-|          |     |     |     Retorne "next - space" como o índice alocado
+|          |     |     |     Return "next - space" as the allocated index
 |          |     |     |
-|          |     |     |--> Não
+|          |     |     |--> No
 |          |     |     |     |
 |          |     |     |     V
-|          |     |     |     Continue o loop
-Fim
+|          |     |     |     Continue the loop
+End
 ```
 
 </details>
 
-### Função `compact` da Estrutura `Heap`
+### `compact` Function of the `Heap` Structure
 
-Aqui está um fluxograma simplificado e pseudocódigo para a função `compact` na estrutura `Heap`:
+Here is a simplified flowchart and pseudocode for the `compact` function in the `Heap` structure:
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função compact():
-    Crie uma lista vazia chamada "nó".
-    Repita enquanto o comprimento de "nó" for menor que o comprimento dos dados da heap:
-        Se o primeiro componente do nó atual não for NULL ou o segundo componente não for NULL, adicione-o à lista "nó".
-        Caso contrário, saia do loop.
-    Retorne o "nó".
-Fim da Função
+Function compact():
+    Create an empty list called "node."
+    Repeat while the length of "node" is less than the length of the heap's data:
+        If the first component of the current node is not NULL or the second component is not NULL, add it to the "node" list.
+        Otherwise, exit the loop.
+    Return "node."
+End of Function
 ```
 
-Esta função cria uma lista chamada "node" e preenche-a com os valores contidos em "data" até encontrar um par de valores (NULL, NULL). Em seguida, retorna a lista "node" como resultado.
+This function creates a list called "node" and populates it with values from the "data" until it encounters a pair of values (NULL, NULL). It then returns the "node" list as the result.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
   
 ```plaintext
-Início
+Start
 |
 V
-Crie uma lista vazia chamada "node"
-Inicialize uma variável "índice" com 0
+Create an empty list called "node"
+Initialize a variable "index" to 0
 |
 V
-Enquanto o valor na posição de índice em "data" não for (NULL, NULL):
+While the value at the index position in "data" is not (NULL, NULL):
   |
-  |-> Adicione o valor na posição de índice em "data" na lista "node"
-  |-> Incremente "índice" em 1
+  |-> Add the value at the index position in "data" to the "node" list
+  |-> Increment "index" by 1
 |
 V
-Retorne a lista "node" como resultado da função
-Fim
+Return the "node" list as the result of the function
+End
 ```
 
 </details>
 
-### Função `link` da Estrutura `Net`
+### `link` Function of the `Net` Structure
 
-A função `link` da Estrutura `Net` tem a finalidade de estabelecer conexões entre elementos, dependendo de seus tipos.
+The `link` function of the `Net` structure is intended to establish connections between elements based on their types.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função link(a, b):
-    Se a é pri e b é pri:
-        Se a e b podem ser pulados:
-            Incremente eras em 1
-        Senão:
-            Adicione (a, b) à lista de redexes `rdex`
-    Senão, se a é var:
-        Substitua o destino de a pelo valor de b
-    Senão, se b é var:
-        Substitua o destino de b pelo valor de a
-    Fim
+Function link(a, b):
+    If a is pri and b is pri:
+        If a and b can be skipped:
+            Increment eras by 1
+        Else:
+            Add (a, b) to the redex list `rdex`
+    Else, if a is var:
+        Replace the target of a with the value of b
+    Else, if b is var:
+        Replace the target of b with the value of a
+    End
 ```
 
-Dessa forma, a função `link` realiza a ligação ou conexão entre elementos da estrutura `Net` de acordo com as regras especificadas para cada tipo de elemento, seja pri (prioritário) ou var (variável). Isso permite a criação e manipulação de conexões entre elementos da rede, o que é útil em diversas aplicações, como sistemas de inferência e processamento de informações.
+In this way, the `link` function establishes connections or links between elements of the `Net` structure according to the specified rules for each type of element, whether it's "pri" (priority) or "var" (variable). This enables the creation and manipulation of connections between network elements, which is useful in various applications such as inference systems and information processing.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Verifique os tipos de `a` e `b`
+Check the types of `a` and `b`
 |
 V
-Se ambos são pri:
-|   Sim
-|   Verifique se `a` e `b` podem ser pulados
+If both are pri:
+|   Yes
+|   Check if `a` and `b` can be skipped
 |   |
 |   V
-|   Se podem:
-|   |   Sim
-|   |   Incremente eras em 1
+|   If they can:
+|   |   Yes
+|   |   Increment eras by 1
 |   |   |
-|   |   Fim
+|   |   End
 |   |
 |   V
-|   Não podem ser pulados
+|   They cannot be skipped
 |   |
 |   V
-|   Adicione a tupla (a, b) em rdex
+|   Add the tuple (a, b) to rdex
 |   |
-|   Fim
+|   End
 |
 V
-Se a é var:
-|   Sim
-|   Substitua o destino de a pelo valor de b
+If a is var:
+|   Yes
+|   Replace the target of a with the value of b
 |   |
-|   Fim
+|   End
 |
 V
-Se b é var:
-|   Sim
-|   Substitua o destino de b pelo valor de a
+If b is var:
+|   Yes
+|   Replace the target of b with the value of a
 |   |
-|   Fim
-Fim
+|   End
+End
 ```
 
 </details>
 
-### Função `interact` da Estrutura `Net`
+### `interact` Function of the `Net` Structure
 
-A função `interact` da Estrutura `Net` é uma função complexa que define as interações entre diferentes tipos de elementos na estrutura. Ela é usada para realizar operações específicas com base nos tipos dos elementos `a` e `b`.
+The `interact` function of the `Net` structure is a complex function that defines interactions between different types of elements in the structure. It is used to perform specific operations based on the types of elements `a` and `b.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Início
- |
- V
-A e B são do mesmo tipo de nó?
- |
- V
-Sim
- |
- |---[A é igual a B?]---> Não
- |      |
- |      |---[Chamar a função anni(A, B)]---> Fim
- V
-Não
- |
- |---[A é um tipo de nó específico (por exemplo, CTR)?]---> Não
- |      |
- |      |---[B é um tipo de nó específico (por exemplo, CTR)?]---> Não
- |      |      |
- |      |      |---[Chamar a função era2(A)]---> Fim
- |      |
- |      |---[Chamar a função comm(B, A)]---> Fim
- |
- |---[A e B têm o mesmo tag?]---> Não
- |      |
- |      |---[Chamar a função comm(A, B)]---> Fim
- V
-Sim
- |
- |---[Chamar a função anni(A, B)]---> Fim
-Fim
+Function interact(a, b)
+    If a and b are of the same node type (e.g., both are of type CTR)
+        If a equals b (based on some specific criteria)
+            Call the anni(a, b) function
+        Else
+            Call the comm(a, b) function
+    Else if a is a specific node type (e.g., CTR)
+        If a and b have the same tag
+            Call the anni(a, b) function
+        Else
+            Call the comm(a, b) function
+    Else if b is a specific node type (e.g., CTR)
+        Call the comm(b, a) function
+    Else
+        Call the era2(a) function
+    End of Function
 ```
 
-A função `interact` é fundamental para as operações de interação entre diferentes tipos de elementos na estrutura `Net`, permitindo a realização de diversas operações de processamento de informações e lógica na rede.
+The `interact` function is essential for interaction operations between different types of elements in the `Net` structure, allowing for various information processing and logic operations within the network.
 
 <details>
-  <summary>Fluxograma</summary>
-
+  <summary>Flowchart</summary>
+    
 ```plaintext
-Função interact(a, b)
-    Se a e b são do mesmo tipo de nó (por exemplo, ambos são do tipo CTR)
-        Se a é igual a b (com base em algum critério específico)
-            Chamar a função anni(a, b)
-        Senão
-            Chamar a função comm(a, b)
-    Senão se a é um tipo de nó específico (por exemplo, CTR)
-        Se a e b têm o mesmo tag
-            Chamar a função anni(a, b)
-        Senão
-            Chamar a função comm(a, b)
-    Senão se b é um tipo de nó específico (por exemplo, CTR)
-        Chamar a função comm(b, a)
-    Senão
-        Chamar a função era2(a)
-    Fim da Função
+Start
+ |
+ V
+Are A and B of the same node type?
+ |
+ V
+Yes
+ |
+ |---[Is A equal to B?]---> No
+ |      |
+ |      |---[Call anni(A, B) function]---> End
+ V
+No
+ |
+ |---[Is A a specific node type (e.g., CTR)?]---> No
+ |      |
+ |      |---[Is B a specific node type (e.g., CTR)?]---> No
+ |      |      |
+ |      |      |---[Call era2(A) function]---> End
+ |      |
+ |      |---[Call comm(B, A) function]---> End
+ |
+ |---[Do A and B have the same tag?]---> No
+ |      |
+ |      |---[Call comm(A, B) function]---> End
+ V
+Yes
+ |
+ |---[Call anni(A, B) function]---> End
+End
 ```
-
 </details>
 
-### Função `conn` da Estrutura `Net`
+### `conn` Function of the `Net` Structure
 
-A função `conn` da Estrutura `Net` tem o propósito de realizar a conexão entre dois elementos `a` e `b` na rede.
+The `conn` function of the `Net` structure serves the purpose of establishing a connection between two elements `a` and `b` in the network.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função conn(a, b):
-    Incremente o valor de `anni` em 1
-    Obtém o valor de P2 de `a` e P2 de `b`
-    Link o valor de P2 de `a` ao valor de P2 de `b`
-    Libera a memória referente a `a`
-    Libera a memória referente a `b`
+Function conn(a, b):
+    Increment the value of `anni` by 1
+    Get the value of P2 from `a` and P2 from `b`
+    Link the value of P2 from `a` to the value of P2 from `b`
+    Free the memory associated with `a`
+    Free the memory associated with `b`
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A2 --[#X}---[#Z}-- B2
@@ -308,48 +307,48 @@ A2 --[#X}---[#Z}-- B2
 A2 -----' 
 ```
 
-Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net`, o que pode ser útil em várias aplicações, como em sistemas de inferência, onde as conexões representam relações lógicas entre conceitos ou entidades. O aumento de `anni` é importante para acompanhar a evolução da rede e das conexões ao longo do tempo.
+This function is used to establish specific connections between elements in the `Net` structure, which can be useful in various applications, such as inference systems, where connections represent logical relationships between concepts or entities. The increment of `anni` is essential for tracking the network's evolution and connections over time.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Incremente o valor de `anni` em 1
-Obtenha o valor de P2 de `a` e P2 de `b`
+Increment the value of `anni` by 1
+Get the value of P2 from `a` and P2 from `b`
 |
 V
-Link o valor de P2 de `a` ao valor de P2 de `b`
+Link the value of P2 from `a` to the value of P2 from `b`
 |
 V
-Libere a memória referente a `a`
-Libere a memória referente a `b`
+Free the memory associated with `a`
+Free the memory associated with `b`
 |
-Fim
+End
 ```
 
 </details>
 
-### Função `anni` da Estrutura `Net`
+### `anni` Function of the `Net` Structure
 
-A função `anni` da Estrutura `Net` tem o propósito de realizar uma ação de aninhamento, que envolve a criação de conexões entre elementos e o incremento do valor da variável `anni`.
+The `anni` function of the `Net` structure is designed to perform a nesting action, which involves creating connections between elements and incrementing the value of the variable `anni`.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função anni(a, b):
-    Incremente o valor de `anni` em 1
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Libere a memória referente a `a`
-    Libere a memória referente a `b`
+Function anni(a, b):
+    Increment the value of `anni` by 1
+    Link the value of P1 with a value derived from `a`
+    Link the value of P1 with a value derived from `b`
+    Link the value of P2 with a value derived from `a`
+    Link the value of P2 with a value derived from `b`
+    Free the memory associated with `a`
+    Free the memory associated with `b`
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A1 --|\     /|-- B2
@@ -361,143 +360,104 @@ A1 -----, ,----- B2
 A2 -----' '----- B1
 ```
 
-Essa função é usada para realizar operações de aninhamento e criação de conexões em uma estrutura de rede, comumente encontrada em sistemas de processamento de informações e lógica. O incremento de `anni` é importante para acompanhar e controlar as operações de aninhamento ao longo do tempo.
+This function is used to perform nesting operations and create connections in a network structure commonly found in information processing and logic systems. The increment of `anni` is crucial for tracking and controlling nesting operations over time.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Incremente o valor de `anni` em 1
-Link do valor de P1 com um valor derivado de `a`
-Link do valor de P1 com um valor derivado de `b`
-Link do valor de P2 com um valor derivado de `a`
-Link do valor de P2 com um valor derivado de `b`
-Libere a memória referente a `a`
-Libere a memória referente a `b`
+Increment the value of `comm` by 1
+Allocate 4 memory slots in `loc`
+Link the value of P1 with a value derived from `a`
+Link the value of P1 with a value derived from `b`
+Link the value of P2 with a value derived from `a`
+Link the value of P2 with a value derived from `b`
+Link the value of P1 with a value derived from `b`
+Link the value of P2 with a value derived from `a`
+Link the value of P1 with a value derived from `a`
+Link the value of P2 with a value derived from `b`
+Allocate 2 memory slots in `space` with a value of zero
+While the value of `space` is less than 4:
+  |
+  V
+  If the value at index `next` in the `data` array is greater than or equal to the array's length:
+  |
+  V
+  Set the value of `space` to 0
+  Set the value of `next` to 1
+  |
+  |
+  V
+  If the value at index `next` in the `data` array for port `P1` is equal to NULL:
+  |
+  V
+  Increment the value of `space` by 1
+  |
+  V
+  Else, set the value of `space` to 0
+  Increment the value of `next` by 1
+  |
+  |
+  V
+  End of Loop
 |
 V
-Fim
+Increment the value of `used` by 4
+Return
 ```
 
 </details>
 
-### Função `comm` da Estrutura `Net`
+### `comm` Function of the `Net` Structure
 
-A função `comm` da Estrutura `Net` tem a finalidade de realizar uma comunicação entre dois elementos `a` e `b`, onde são estabelecidas várias conexões específicas entre eles, além de realizar alocações de memória para armazenar informações relacionadas a essa comunicação.
+The `comm` function of the `Net` structure is intended to facilitate communication between two elements, `a` and `b`, establishing various specific connections between them, as well as managing memory allocations related to this communication.
 
-**Pseudocódigo**:
-
-```plaintext
-Função comm(a, b):
-    Incremente o valor de `comm` em 1
-    Aloque 4 slots de memória em `loc`
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Aloque 2 slots de memória em `space` com valor zero
-    Enquanto o valor de `space` for menor que 4:
-        Se o valor do índice `next` no vetor `data` for maior ou igual ao comprimento do vetor:
-            Atribua 0 ao valor de `space`
-            Defina o valor de `next` como 1
-        Se o valor do índice `next` no vetor `data` para o porto `P1` for igual a NULL:
-            Incremente o valor de `space` em 1
-        Senão, atribua 0 ao valor de `space`
-            Incremente o valor de `next` em 1
-    Incrementa o valor de `used` em 4
-```
-
-**Diagrama**:
-
-```
-A1 --|\         /|-- B2
-     |a|-------|b|   
-A2 --|/         \|-- B1
-~~~~~~~~~~~~~~~~~~~~~~~ CTR-CTR (A != B)
-      /|-------|\
-A1 --|b|       |a|-- B2
-      \|--, ,--|/
-           X
-      /|--' '--|\
-A2 --|b|       |a|-- B1
-      \|-------|/
-```
-
-Essa função é usada para estabelecer conexões complexas entre elementos na estrutura `Net` durante uma operação de comunicação, e também para gerenciar alocações de memória relacionadas a essa operação. Isso é importante em sistemas de processamento de informações onde a comunicação e o gerenciamento de recursos são fundamentais.
-
-<details>
-  <summary>Fluxograma</summary>
+**Pseudocode**:
 
 ```plaintext
-Início
-|
-V
-Incremente o valor de `comm` em 1
-Aloque 4 slots de memória em `loc`
-Link do valor de P1 com um valor derivado de `a`
-Link do valor de P1 com um valor derivado de `b`
-Link do valor de P2 com um valor derivado de `a`
-Link do valor de P2 com um valor derivado de `b`
-Link do valor de P1 com um valor derivado de `b`
-Link do valor de P2 com um valor derivado de `a`
-Link do valor de P1 com um valor derivado de `a`
-Link do valor de P2 com um valor derivado de `b`
-Aloque 2 slots de memória em `space` com valor zero
-Enquanto o valor de `space` for menor que 4:
-  |
-  V
-  Se o valor do índice `next` no vetor `data` for maior ou igual ao comprimento do vetor:
-  |
-  V
-  Atribua 0 ao valor de `space`
-  Defina o valor de `next` como 1
-  |
-  |
-  V
-  Se o valor do índice `next` no vetor `data` para o porto `P1` for igual a NULL:
-  |
-  V
-  Incremente o valor de `space` em 1
-  |
-  V
-  Senão, atribua 0 ao valor de `space`
-  Incremente o valor de `next` em 1
-  |
-  |
-  V
-  Fim do Loop
-|
-V
-Incrementa o valor de `used` em 4
-Retorne
+Function comm(a, b):
+    Increment the value of `comm` by 1
+    Allocate 4 memory slots in `loc`
+    Link the value of P1 with a value derived from `a`
+    Link the value of P1 with a value derived from `b`
+    Link the value of P2 with a value derived from `a`
+    Link the value of P2 with a value derived from `b`
+    Link the value of P1 with a value derived from `b`
+    Link the value of P2 with a value derived from `a`
+    Link the value of P1 with a value derived from `a`
+    Link the value of P2 with a value derived from `b`
+    Allocate 2 memory slots in `space` with a value of zero
+    While the value of `space` is less than 4:
+        If the value at the `next` index in the `data` array is greater than or equal to the array's length:
+            Set the value of `space` to 0
+            Set the value of `next` to 1
+        If the value at the `next` index in the `data` array for port `P1` is equal to NULL:
+            Increment the value of `space` by 1
+        Else, set the value of `space` to 0
+            Increment the value of `next` by 1
+    Increment the value of `used` by 4
 ```
-
 </details>
+### `pass` Function of the `Net` Structure
 
-### Função `pass` da Estrutura `Net`
+The `pass` function of the `Net` structure is intended to perform an information passing action between two elements, `a` and `b`.
 
-A função `pass` da Estrutura `Net` tem o propósito de realizar uma ação de passagem de informações entre dois elementos `a` e `b`.
-
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função pass(a, b):
-    Incremente o valor de `comm` em 1
-    Aloque 3 slots de memória em `loc`
-    Link do valor de P2 com um valor derivado de `b`
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `a`
-    Retorne
+Function pass(a, b):
+    Increment the value of `comm` by 1
+    Allocate 3 memory slots in `loc`
+    Link the value of P2 with a value derived from `b`
+    Link the value of P1 with a value derived from `a`
+    Link the value of P2 with a value derived from `a`
+    Return
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 WIP
@@ -508,85 +468,87 @@ A2 --|/
 TODO
 ```
 
-Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net` durante uma operação de passagem de informações, que pode ser útil em diversas aplicações, como sistemas de comunicação e processamento de dados. O incremento de `comm` é importante para acompanhar e controlar as operações de comunicação ao longo do tempo.
+This function is used to establish specific connections between elements in the `Net` structure during an information passing operation, which can be useful in various applications, such as communication systems and data processing. The increment of `comm` is important for tracking and controlling communication operations over time.
+
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Incremente o valor de `comm` em 1
-Aloque 3 slots de memória em `loc`
-Link do valor de P2 com um valor derivado de `b`
-Link do valor de P1 com um valor derivado de `a`
-Link do valor de P2 com um valor derivado de `a`
+Increment the value of `comm` by 1
+Allocate 3 memory slots in `loc`
+Link the value of P2 with a value derived from `b`
+Link the value of P1 with a value derived from `a`
+Link the value of P2 with a value derived from `a`
 |
 V
-Fim
+End
 ```
 
 </details>
 
-### Função `copy` da Estrutura `Net`
+### `copy` Function of the `Net` Structure
 
-A função `copy` da Estrutura `Net` tem o propósito de realizar uma operação de cópia de informações de um elemento `a` para um elemento `b`.
+The `copy` function of the `Net` structure is intended to perform a copy operation of information from one element `a` to another element `b`.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função copy(a, b)
-    Obtém o valor do nó A.
-    Cria uma cópia do nó B.
-    Define os alvos das portas principais de A para apontar para a cópia de B.
-    Libera o nó A.
-Fim da Função
+Function copy(a, b)
+    Get the value of node A.
+    Create a copy of node B.
+    Set the targets of the main ports of A to point to the copy of B.
+    Free node A.
+End of Function
 ```
 
-Essa função é usada para copiar informações específicas de um elemento para outro na estrutura `Net`, o que pode ser útil em diversas aplicações, como sistemas de processamento de dados e lógica. O incremento de `comm` é importante para acompanhar e controlar as operações de cópia ao longo do tempo.
+This function is used to copy specific information from one element to another in the `Net` structure, which can be useful in various applications, such as data processing and logic systems. The increment of `comm` is important for tracking and controlling copy operations over time.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
  |
  V
-Obter valor de A
+Get the value of A
  |
  V
-Criar uma cópia do nó B
- |
- |
- V
-Definir os alvos das portas principais de A para apontar para a cópia de B
+Create a copy of node B
  |
  |
  V
-Liberar o nó A
-Fim
+Set the targets of the main ports of A to point to the copy of B
+ |
+ |
+ V
+Free node A
+End
 ```
 
 </details>
 
-### Função `era2` da Estrutura `Net`
 
-A função `era2` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser," que envolve a remoção de informações de um elemento `a` e a criação de conexões com o valor "ERAS."
+### `era2` Function of the `Net` Structure
 
-**Pseudocódigo**:
+The `era2` function of the `Net` structure serves the purpose of performing an "eraser" operation, which involves removing information from an element `a` and creating connections with the value "ERAS."
+
+**Pseudocode**:
 
 ```plaintext
-Função era2(a):
-    Incremente o valor de `eras` em 1
-    Obtenha o valor de P1 de a.val()
-    Obtenha o valor de P2 de a.val()
-    Link do valor de P1 com o valor ERAS
-    Link do valor de P2 com o valor ERAS
-    Libere o valor de a.val()
-    Retorne
+Function era2(a):
+    Increment the value of `eras` by 1
+    Get the value of P1 from a.val()
+    Get the value of P2 from a.val()
+    Link the value of P1 with the value ERAS
+    Link the value of P2 with the value ERAS
+    Free the value of a.val()
+    Return
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A1 --|\
@@ -597,44 +559,44 @@ A1 ------- ()
 A2 ------- ()
 ```
 
-Essa função é usada para realizar operações de apagamento de informações em uma estrutura de rede, o que pode ser útil em sistemas de processamento de dados onde a remoção de informações é necessária. O incremento de `eras` é importante para acompanhar e controlar as operações de apagamento ao longo do tempo.
+This function is used to perform erasure operations in a network structure, which can be useful in data processing systems where information removal is necessary. The increment of `eras` is important to track and control erasure operations over time.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Incremente o valor de `eras` em 1
-Obtenha o valor de P1 de a.val()
-Obtenha o valor de P2 de a.val()
-Link do valor de P1 com o valor ERAS
-Link do valor de P2 com o valor ERAS
-Libere o valor de a.val()
+Increment the value of `eras` by 1
+Get the value of P1 from a.val()
+Get the value of P2 from a.val()
+Link the value of P1 with the value ERAS
+Link the value of P2 with the value ERAS
+Free the value of a.val()
 |
 V
-Fim
+End
 ```
 
 </details>
 
-### Função `era1` da Estrutura `Net`
+### `era1` Function of the `Net` Structure
 
-A função `era1` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser" mais específica, que envolve a remoção de informações de um único porto `P2` do elemento `a` e a criação de uma conexão com o valor "ERAS" nesse porto.
+The `era1` function of the `Net` structure serves the purpose of performing a more specific "eraser" operation, involving the removal of information from a single port `P2` of element `a` and creating a connection with the value "ERAS" in that port.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função era1(a):
-    Incremente o valor de `eras` em 1
-    Obtenha o valor de P2 de a.val()
-    Link do valor de P2 com o valor ERAS
-    Libere o valor de a.val()
-    Retorne
+Function era1(a):
+    Increment the value of `eras` by 1
+    Get the value of P2 from a.val()
+    Link the value of P2 with the value ERAS
+    Free the value of a.val()
+    Return
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A2 --[#X}-- ()
@@ -642,47 +604,47 @@ A2 --[#X}-- ()
 A2 ------- ()
 ```
 
-Essa função é usada para realizar operações de apagamento específico de informações em uma estrutura de rede, focando em um único porto. O incremento de `eras` é importante para acompanhar e controlar as operações de apagamento ao longo do tempo.
+This function is used to perform specific erasure operations of information in a network structure, focusing on a single port. The increment of `eras` is important to track and control erasure operations over time.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Incremente o valor de `eras` em 1
-Obtenha o valor de P2 de a.val()
-Link do valor de P2 com o valor ERAS
-Libere o valor de a.val()
+Increment the value of `eras` by 1
+Get the value of P2 from a.val()
+Link the value of P2 with the value ERAS
+Free the value of a.val()
 |
 V
-Fim
+End
 ```
 
 </details>
 
-### Função `op2n` da Estrutura `Net`
+### `op2n` Function of the `Net` Structure
 
-A função `op2n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números.
+The `op2n` function of the `Net` structure serves the purpose of performing a specific operation involving the manipulation of numbers.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função op2n(a, b):
-    p1 <- Obtenha o valor p1 a partir de a.val()
-    Se p1 for um número:
-        rt <- Calcule `rt` como o resultado da função `prim` com parâmetros (valor de p1, valor de b)
-    Senão:
-        Defina o valor P1 de a.val() como b
-    Fim Se
-    Obtenha o valor de P2 de a.val()
-    Link do novo valor de NUM `rt` com o valor de P2
-    Libere o valor de a.val()
-    Retorne
+Function op2n(a, b):
+    p1 <- Get the value of p1 from a.val()
+    If p1 is a number:
+        rt <- Calculate `rt` as the result of the `prim` function with parameters (value of p1, value of b)
+    Else:
+        Set the P1 value of a.val() as b
+    End If
+    Get the value of P2 from a.val()
+    Link the new NUM value `rt` with the value of P2
+    Free the value of a.val()
+    Return
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A1 --,
@@ -692,51 +654,28 @@ A2 --'
 A2 --[#X}-- A1
 ```
 
-Essa função é usada para realizar operações específicas envolvendo números na estrutura `Net`. Dependendo do tipo de operando `p1`, a função pode executar diferentes ações, como calcular o resultado da operação ou atribuir um novo valor a `a`. A operação `prim` é usada para realizar o cálculo necessário, e o resultado é armazenado em `rt`.
+This function is used to perform specific operations involving numbers in the `Net` structure. Depending on the type of operand `p1`, the function can execute different actions, such as calculating the operation's result or assigning a new value to `a`. The `prim` operation is used to perform the necessary calculation, and the result is stored in `rt`.
 
-<details>
-  <summary>Fluxograma</summary>
+### `op1n` Function of the `Net` Structure
 
-```plaintext
-Início
-|
-V
-Obtenha o valor p1 a partir de a.val()
-Verifique se p1 é um número
-|
-|---[Sim]---> Calcule `rt` como o resultado da função `prim` com parâmetros (valor de p1, valor de b)
-|---[Não]---> Defina o valor P1 de a.val() como b
-|
-Obtenha o valor de P2 de a.val()
-Link do novo valor de NUM `rt` com o valor de P2
-Libere o valor de a.val()
-|
-V
-Fim
-```
+The `op1n` function of the `Net` structure serves the purpose of performing a specific operation involving the manipulation of numbers.
 
-</details>
-
-### Função `op1n` da Estrutura `Net`
-
-A função `op1n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números.
-
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função op1n(a, b):
-    p1 <- Obtenha o valor p1 a partir de a.val()
-    p2 <- Obtenha o valor p2 a partir de b.val()
-    v0 <- Obtenha v0 a partir dos bits 0-23 de p1
-    v1 <- Obtenha v1 a partir dos bits 0-23 de p2
-    v2 <- Calcule v2 como o resultado da função `prim` com parâmetros v0 e v1
-    result <- Crie uma nova instância de Ptr com o operador NUM e o valor v2
-    Defina o valor P2 do novo Ptr como a instância p2
-    Libere o valor de a.val()
-    Retorne result
+Function op1n(a, b):
+    p1 <- Get the value of p1 from a.val()
+    p2 <- Get the value of p2 from b.val()
+    v0 <- Get v0 from bits 0-23 of p1
+    v1 <- Get v1 from bits 0-23 of p2
+    v2 <- Calculate v2 as the result of the `prim` function with parameters v0 and v1
+    result <- Create a new Ptr instance with the NUM operator and value v2
+    Set the P2 value of the new Ptr as the instance p2
+    Free the value of a.val()
+    Return result
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A2 --[#X}-- #Y
@@ -744,115 +683,115 @@ A2 --[#X}-- #Y
 A2 -- #Z
 ```
 
-Essa função é usada para realizar operações específicas envolvendo números na estrutura `Net`. Ela extrai partes dos valores `p1` e `p2`, realiza uma operação específica (`prim`), cria uma nova instância de `Ptr` com o resultado e estabelece conexões necessárias. O resultado da operação é retornado como uma nova instância de `Ptr` chamada `result`.
+This function is used to perform specific operations involving numbers in the `Net` structure. It extracts parts of the values `p1` and `p2`, performs a specific operation (`prim`), creates a new `Ptr` instance with the result, and establishes necessary connections. The result of the operation is returned as a new `Ptr` instance called `result`.
 
 <details>
-  <summary>Fluxograma</summary>
-  
+  <summary>Flowchart</summary>
+
 ```plaintext
-Início
+Start
 |
 V
-Obtenha o valor p1 a partir de a.val()
-Obtenha o valor p2 a partir de b.val()
-Obtenha v0 a partir dos bits 0-23 de p1
-Obtenha v1 a partir dos bits 0-23 de p2
-Calcule v2 como o resultado da função `prim` com parâmetros v0 e v1
-Crie uma nova instância de Ptr com o operador NUM e o valor v2
-Defina o valor P2 do novo Ptr como a instância p2
-Libere o valor de a.val()
+Get the value of p1 from a.val()
+Get the value of p2 from b.val()
+Get v0 from bits 0-23 of p1
+Get v1 from bits 0-23 of p2
+Calculate v2 as the result of the `prim` function with parameters v0 and v1
+Create a new instance of Ptr with the NUM operator and value v2
+Set the P2 value of the new Ptr as the instance p2
+Free the value of a.val()
 |
 V
-Fim
+End
 ```
 
 </details>
 
-### Função `prim` da Estrutura `Net`
+### `prim` Function of the `Net` Structure
 
-A função `prim` da Estrutura `Net` desempenha o papel de realizar operações binárias e lógicas em valores numéricos.
+The `prim` function of the `Net` structure plays the role of performing binary and logical operations on numeric values.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função prim(a, b)
-    Obtém o operador do nó A (os bits superiores).
-    Obtém o valor do nó A (os bits inferiores).
-    Obtém o operador do nó B (os bits superiores) [não usado neste exemplo].
-    Obtém o valor do nó B (os bits inferiores).
+Function prim(a, b)
+    Get the operator of node A (the upper bits).
+    Get the value of node A (the lower bits).
+    Get the operator of node B (the upper bits) [not used in this example].
+    Get the value of node B (the lower bits).
     
-    Se o operador do nó A é USE
-        Define o operador do resultado como o operador do nó B.
-    Se não
-        Realiza a operação correspondente com base no operador do nó A.
+    If the operator of node A is USE
+        Set the operator of the result as the operator of node B.
+    If not
+        Perform the corresponding operation based on the operator of node A.
     
-    Retorna o resultado como um novo nó.
-Fim da Função
+    Return the result as a new node.
+End of Function
 ```
 
-A função retorna o valor `result`, que é o resultado da operação determinada pelo operador `a_opr`. Essa função permite realizar várias operações matemáticas e lógicas com os valores contidos nas estruturas `a` e `b`.
+The function returns the `result` value, which is the result of the operation determined by the `a_opr` operator. This function allows performing various mathematical and logical operations with the values contained in the `a` and `b` structures.
 
 <details>
-  <summary>Fluxograma</summary>
-  
+  <summary>Flowchart</summary>
+
 ```plaintext
-Início
+Start
  |
  V
-Obter operador de A
+Get operator of A
  |
  V
-Obter valor de A
+Get value of A
  |
  V
-Obter operador de B [não usado neste exemplo]
+Get operator of B [not used in this example]
  |
  V
-Obter valor de B
+Get value of B
  |
  |
  V
-Operador de A é USE?
+Operator of A is USE?
  |
- |---[Sim]---> Define operador do resultado como operador de B
+ |---[Yes]---> Set operator of result as operator of B
  |
- |---[Não]---> Realizar a operação correspondente com base no operador de A
+ |---[No]---> Perform the corresponding operation based on the operator of A
              |
              |
              V
-             Retornar o resultado como um novo nó
-Fim
+             Return the result as a new node
+End
 ```
 
 </details>
 
-### Função `mtch` da Estrutura `Net`
+### `mtch` Function of the `Net` Structure
 
-A função `mtch` da Estrutura `Net` realiza operações com ponteiros com base no valor do segundo argumento `b`.
+The `mtch` function of the `Net` structure performs operations with pointers based on the value of the second argument `b`.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função mtch(a, b):
-    P1 (p1) <- Obtenha o primeiro argumento da ponteira (a) usando a função heap.get
-    P2 (p2) <- Obtenha o segundo argumento da ponteira (a) usando a função heap.get
+Function mtch(a, b):
+    P1 (p1) <- Get the first argument of the pointer (a) using the heap.get function
+    P2 (p2) <- Get the second argument of the pointer (a) using the heap.get function
 
-    Se o valor do segundo argumento (b.val()) for igual a 0:
-        Crie um novo local (loc) na pilha da memória
-        Defina o valor na posição (loc+0, P2) como ERAS
-        Link entre o primeiro argumento da ponteira (p1) e o local (loc+0) com a tag CT0
-        Link entre o segundo argumento da ponteira (p2) e o local (loc+0) com a tag VR1
-        Libere a ponteira (a) na memória heap
-    Senão, se o valor do segundo argumento (b.val()) for diferente de 0:
-        Crie um novo local (loc) na pilha da memória
-        Defina o valor na posição (loc+0, P1) como ERAS
-        Defina o valor na posição (loc+0, P2) como uma nova ponteira (PTR) com a tag CT0 e a posição (loc+1) como valor
-        Link entre o primeiro argumento da ponteira (p1) e o local (loc+0) com a tag CT0
-        Link entre o segundo argumento da ponteira (p2) e o local (loc+1) com a tag VR2
-        Libere a ponteira (a) na memória heap
+    If the value of the second argument (b.val()) is equal to 0:
+        Create a new location (loc) on the memory stack
+        Set the value at position (loc+0, P2) to ERAS
+        Link between the first argument of the pointer (p1) and the location (loc+0) with the CT0 tag
+        Link between the second argument of the pointer (p2) and the location (loc+0) with the VR1 tag
+        Free the pointer (a) in the heap memory
+    Else, if the value of the second argument (b.val()) is not equal to 0:
+        Create a new location (loc) on the memory stack
+        Set the value at position (loc+0, P1) to ERAS
+        Set the value at position (loc+0, P2) to a new pointer (PTR) with the CT0 tag and position (loc+1) as value
+        Link between the first argument of the pointer (p1) and the location (loc+0) with the CT0 tag
+        Link between the second argument of the pointer (p2) and the location (loc+1) with the VR2 tag
+        Free the pointer (a) in the heap memory
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A1 --,
@@ -873,64 +812,64 @@ A1 --| |
       \|-- A2
 ```
 
-Essa função lida com ponteiros e valores em relação ao valor do segundo argumento `b`. Dependendo do valor de `b`, diferentes operações de ligação e alocação de memória são executadas. Essa função é usada para manipular a estrutura de dados da rede e alocar memória com base nas condições definidas pelo valor de `b`.
+This function deals with pointers and values in relation to the value of the second argument `b`. Depending on the value of `b`, different linking and memory allocation operations are executed. This function is used to manipulate the network data structure and allocate memory based on conditions defined by the value of `b`.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-P1 (p1) <- Obtenha o primeiro argumento da ponteira (a) usando a função heap.get
-P2 (p2) <- Obtenha o segundo argumento da ponteira (a) usando a função heap.get
+P1 (p1) <- Get the first argument of the pointer (a) using the heap.get function
+P2 (p2) <- Get the second argument of the pointer (a) using the heap.get function
 |
 V
-Se o valor do segundo argumento (b.val()) for igual a 0:
+If the value of the second argument (b.val()) is equal to 0:
 |
-|----> Crie um novo local (loc) na pilha da memória
-|----> Defina o valor na posição (loc+0, P2) como ERAS
-|----> Link entre o primeiro argumento da ponteira (p1) e o local (loc+0) com a tag CT0
-|----> Link entre o segundo argumento da ponteira (p2) e o local (loc+0) com a tag VR1
-|----> Libere a ponteira (a) na memória heap
-|
-V
-Senão, se o valor do segundo argumento (b.val()) for diferente de 0:
-|
-|----> Crie um novo local (loc) na pilha da memória
-|----> Defina o valor na posição (loc+0, P1) como ERAS
-|----> Defina o valor na posição (loc+0, P2) como uma nova ponteira (PTR) com a tag CT0 e a posição (loc+1) como valor
-|----> Link entre o primeiro argumento da ponteira (p1) e o local (loc+0) com a tag CT0
-|----> Link entre o segundo argumento da ponteira (p2) e o local (loc+1) com a tag VR2
-|----> Libere a ponteira (a) na memória heap
+|----> Create a new location (loc) on the memory stack
+|----> Set the value at position (loc+0, P2) to ERAS
+|----> Link between the first argument of the pointer (p1) and the location (loc+0) with the CT0 tag
+|----> Link between the second argument of the pointer (p2) and the location (loc+0) with the VR1 tag
+|----> Free the pointer (a) in the heap memory
 |
 V
-Fim
+Else, if the value of the second argument (b.val()) is not equal to 0:
+|
+|----> Create a new location (loc) on the memory stack
+|----> Set the value at position (loc+0, P1) to ERAS
+|----> Set the value at position (loc+0, P2) to a new pointer (PTR) with the CT0 tag and position (loc+1) as value
+|----> Link between the first argument of the pointer (p1) and the location (loc+0) with the CT0 tag
+|----> Link between the second argument of the pointer (p2) and the location (loc+1) with the VR2 tag
+|----> Free the pointer (a) in the heap memory
+|
+V
+End
 ```
 
 </details>
 
-### Função `deref` da Estrutura `Net`
+### `deref` Function of the `Net` Structure
 
-A função `deref` da Estrutura `Net` realiza operações de desreferência de ponteiros, expandindo-os conforme necessário.
+The `deref` function of the `Net` structure performs pointer dereference operations, expanding them as needed.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função deref(book, ptr, parent):
-    Enquanto ptr for um ponteiro do tipo REF:
-        Se ptr apontar para uma rede fechada no livro book:
-            Carrega a rede fechada do livro
-            Ajusta os nós da rede com um novo local (loc)
-            Conecta os nós da rede ao local atual no heap
-            Carrega os redexes da rede
-            Ajusta os redexes com base no local (loc) atual
-            Conecta os redexes ajustados ao heap
-            Define o novo valor de ptr como o nó raiz da rede
-    Retorna ptr após todas as expansões
+Function deref(book, ptr, parent):
+    While ptr is a pointer of the REF type:
+        If ptr points to a closed network in the book:
+            Load the closed network from the book
+            Adjust the nodes of the network with a new location (loc)
+            Connect the nodes of the network to the current location in the heap
+            Load the redexes of the network
+            Adjust the redexes based on the current location (loc)
+            Connect the adjusted redexes to the heap
+            Set the new value of ptr as the root node of the network
+    Return ptr after all expansions
 ```
 
-**Diagrama**:
+**Diagram**:
 
 ```
 A1 --|\
@@ -942,170 +881,163 @@ A1 --|\
 A2 --|/
 ```
 
-Essa função é usada para desreferenciar ponteiros que apontam para redes fechadas, permitindo o acesso aos nós e redexes dessas redes. É uma parte fundamental para a manipulação de estruturas de rede na estrutura `Net`.
+This function is used to dereference pointers that point to closed networks, allowing access to the nodes and redexes of these networks. It is a fundamental part of network structure manipulation in the `Net` structure.
 
 <details>
-  <summary>Fluxograma</summary>
-  
+  <summary>Flowchart</summary>
+
 ```plaintext
-Início
+Start
 |
 V
-Recebe a referência de um livro (book), um ponteiro (ptr) e um ponteiro pai (parent)
+Receives a reference to a book (book), a pointer (ptr), and a parent pointer (parent)
 |
 V
-Enquanto ptr for um ponteiro do tipo REF
+While ptr is a pointer of the REF type:
 |
 V
-  Encontre o livro (book) do ptr atual
+  Find the book (book) of the current ptr
   |
   V
-  Se o ptr atual apontar para uma rede fechada
+  If the current ptr points to a closed network
   |
   V
-    Carrega a rede fechada do livro (book)
+    Load the closed network from the book (book)
     |
     V
-    Ajusta os nós da rede fechada com um novo local (loc)
+    Adjust the nodes of the closed network with a new location (loc)
     |
     V
-    Conecta os nós da rede fechada ao local atual (loc) no heap
+    Connect the nodes of the closed network to the current location (loc) in the heap
     |
     V
-    Carrega os redexes da rede fechada
+    Load the redexes of the closed network
     |
     V
-    Ajusta os redexes com base no local (loc) atual
+    Adjust the redexes based on the current location (loc)
     |
     V
-    Conecta os redexes ajustados ao heap
+    Connect the adjusted redexes to the heap
     |
     V
-    Define o novo valor de ptr para o nó raiz da rede fechada
+    Set the new value of ptr to the root node of the closed network
   |
   V
-Retorna o ptr após todas as expansões
+Return ptr after all expansions
 |
-Fim
+End
 ```
 
 </details>
 
-### Função `expand` da Estrutura `Net`
+### `expand` Function of the `Net` Structure
 
-A função `expand` da Estrutura `Net` é responsável por expandir um ponteiro, o que envolve desreferenciar o ponteiro e realizar operações com base no tipo do ponteiro.
+The `expand` function of the `Net` structure is responsible for expanding a pointer, which involves dereferencing the pointer and performing operations based on the type of the pointer.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função expand(net, book, dir):
-    Obtenha o alvo (ptr) usando a função get_target
-    Se ptr for um ctr então:
-        Expanda o contador para os portos auxiliares (VR1 e VR2)
-    Senão, se ptr for uma referência então:
-        Expanda a referência e atualize o ponteiro de destino com a expansão
-Fim da Função
-
+Function expand(net, book, dir):
+    Get the target (ptr) using the get_target function
+    If ptr is a CTR:
+        Expand the counter to auxiliary ports (VR1 and VR2)
+    Else, if ptr is a REF:
+        Expand the reference and update the target pointer with the expansion
+End of Function
 ```
 
-Essa função é fundamental para a manipulação de ponteiros e redes na estrutura `Net`, permitindo a exploração de estruturas de dados mais complexas e a realização de operações em seus elementos. Ela expande tanto contadores quanto referências, garantindo que os ponteiros sejam desreferenciados e manipulados adequadamente.
+This function is essential for handling pointers and networks in the `Net` structure, allowing for the exploration of more complex data structures and performing operations on their elements. It expands both counters and references, ensuring that pointers are dereferenced and manipulated correctly.
+
+This function is essential for handling pointers and networks in the `Net` structure, enabling the exploration of more complex data structures and performing operations on their elements. It expands both counters and references, ensuring that pointers are dereferenced and manipulated properly.
 
 <details>
-  <summary>Fluxograma</summary>
-  
+  <summary>Flowchart</summary>
+
 ```plaintext
-Início
+Start
 |
 V
-Obtém ptr usando a função get_target
+Get ptr using the get_target function
 |
 V
-Se ptr for um ctr então
+If ptr is a CTR:
 |
-|--> Expanda o contador para os portos auxiliares (VR1 e VR2)
+|--> Expand the counter to auxiliary ports (VR1 and VR2)
 |
 V
-Senão, se ptr for uma referência então
+Else, if ptr is a REF:
 |
-|--> Expanda a referência e atualize o ponteiro de destino com a expansão
-Fim
+|--> Expand the reference and update the target pointer with the expansion
+End
 ```
 
 </details>
 
-### Função `reduce` da Estrutura `Net`
+### `reduce` Function of the `Net` Structure
 
-A função `reduce` da Estrutura `Net` é responsável por realizar a redução de redexes na rede.
+The `reduce` function of the `Net` structure is responsible for performing reductions of redexes in the network.
 
-**Pseudocódigo**:
+**Pseudocode**:
 
 ```plaintext
-Função reduce(book):
-    Enquanto houver redexes na rede:
-        Para cada redex (a, b) na rede:
-            Chame a função "interact" com os argumentos (net, book, a, b)
-        Fim do loop
-    Fim do loop
-Fim
+Function reduce(book):
+    While there are redexes in the network:
+        For each redex (a, b) in the network:
+            Call the "interact" function with arguments (net, book, a, b)
+        End of loop
+    End of loop
+End
 ```
 
-Essa função desempenha um papel crucial na execução de reduções na rede, permitindo que os redexes sejam identificados e manipulados de acordo com as regras específicas da estrutura `Net`. Isso é fundamental para a computação realizada pela rede.
+This function plays a crucial role in carrying out reductions in the network, allowing redexes to be identified and manipulated according to the specific rules of the `Net` structure. This is essential for the computation performed by the network.
 
 <details>
-  <summary>Fluxograma</summary>
+  <summary>Flowchart</summary>
 
 ```plaintext
-Início
+Start
 |
 V
-Enquanto houver redexes na rede
+While there are redexes in the network
 |
 V
-Para cada redex (a, b) na rede
+For each redex (a, b) in the network
 |
 V
-Chame a função "interact" com os argumentos (net, book, a, b)
-Fim
+Call the "interact" function with arguments (net, book, a, b)
+End
 ```
 
 </details>
 
-### Função `normal` da Estrutura `Net`
+### `normal` Function of the `Net` Structure
 
-A função `normal` da Estrutura `Net` é responsável por normalizar a rede, o que envolve a redução de redexes até que não haja mais redexes na rede.
+The `normal` function of the `Net` structure is responsible for normalizing the network, which involves reducing redexes until there are no more redexes in the network.
 
-**Pseudocódigo**:
-
-```plaintext
-Função normal(book):
-    Chama expand com o ponteiro ROOT e o livro book
-
-    Enquanto existirem redexes:
-        Chama a função reduce com o livro book
-        Chama expand com o ponteiro ROOT e o livro book
-```
-
-Essa função desempenha um papel central na normalização da rede, assegurando que todos os redexes sejam reduzidos de acordo com as regras da estrutura `Net`. A normalização é um passo importante em sistemas de redução ou computação formal, onde a expressão é simplificada até que alcance um estado irreversível.
-
-<details>
-  <summary>Fluxograma</summary>
+**Pseudocode**:
 
 ```plaintext
-Início
-|
-V
-Recebe a referência de um livro (book)
-|
-V
-Chama a função expand com um ponteiro (ROOT) e o livro (book)
-|
-V
-Enquanto existirem redexes
-|
-V
-Chama a função reduce com o livro (book) e função expand com um ponteiro (ROOT) e o livro (book)
-|
-Fim
+Function normal(book):
+    Call expand with the ROOT pointer and the book book
+
+    While there are redexes:
+        Call the reduce function with the book book
+        Call expand with the ROOT pointer and the book book
 ```
 
-</details>
+This function plays a central role in normalizing the network, ensuring that all redexes are reduced according to the rules of the `Net` structure. Normalization is an important step in reduction systems or formal computation, where the expression is simplified until it reaches an irreducible state.
+### Function `normal` in the `Net` Structure
+
+The `normal` function in the `Net` Structure is responsible for normalizing the network, which involves reducing redexes until there are no more redexes left.
+
+**Pseudocode**:
+
+```plaintext
+Function normal(book):
+    Call expand with the ROOT pointer and the book
+    While there are still redexes:
+        Call the reduce function with the book
+        Call expand with the ROOT pointer and the book
+```
+
+This function plays a central role in normalizing the network, ensuring that all redexes are reduced according to the rules of the `Net` structure. Normalization is an important step in reduction systems or formal computation, where the expression is simplified until it reaches an irreducible state.
