@@ -483,6 +483,7 @@ Função to_def(net):
     Retorne def
 ```
 
+A função to_def da Estrutura Net tem a finalidade de criar uma nova instância da estrutura Def, que é um componente de dados. O processo começa pela criação dessa instância, chamada de "def". Em seguida, o valor de "def.rdex" é definido como o valor de "net.rdex". Posteriormente, a função percorre cada par de elementos (p1, p2) presente na saída da função "net.heap.compact()" e os adiciona à lista "def.node". Uma vez que todos os elementos tenham sido processados, a função retorna a instância "def", que agora contém os dados correspondentes aos elementos da estrutura Net em um formato específico para a estrutura Def. Isso possibilita a conversão e transformação de dados de um formato para outro, útil em muitos contextos de programação e processamento de informações.
 
 ### Função `from_def` da Estrutura `Net`:
 
@@ -520,6 +521,7 @@ Função from_def(def):
     net.rdex = def.rdex
     Retorne net
 ```
+A função from_def da Estrutura Net tem o propósito de criar uma nova instância da estrutura Net com base em uma instância da estrutura Def. O processo começa com a criação da nova instância de Net, chamada "net". Em seguida, a função itera sobre os elementos em def.node, que consistem em índices (i) e pares de elementos (p1, p2). Para cada um deles, a função atualiza a entrada correspondente na instância "net.heap" com os valores p1 e p2. Após a conclusão dessa etapa, a função define a variável "net.rdex" com o valor de "def.rdex". Finalmente, a instância "net" é retornada, agora contendo os dados e configurações da instância "def" no formato da estrutura "Net". Isso permite a conversão e transformação de dados de uma estrutura para outra, facilitando o uso e manipulação dessas informações em diferentes contextos.
 
 ### Função `link` da Estrutura `Net`:
 
@@ -588,6 +590,15 @@ Função link(a, b):
         Substitua o destino de b pelo valor de a
     Fim
 ```
+
+A função `link` da Estrutura `Net` tem a finalidade de estabelecer conexões entre elementos, dependendo de seus tipos. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função começa verificando os tipos de `a` e `b`.
+2. Se ambos `a` e `b` forem elementos pri (prioritários), ela verifica se eles podem ser pulados. Se forem puláveis, incrementa a contagem de "eras" em 1. Caso contrário, adiciona a tupla (a, b) à lista `rdex`, que armazena as conexões.
+3. Se `a` for uma variável (`var`), a função substitui o destino de `a` pelo valor de `b`.
+4. Se `b` for uma variável (`var`), a função substitui o destino de `b` pelo valor de `a`.
+
+Dessa forma, a função `link` realiza a ligação ou conexão entre elementos da estrutura `Net` de acordo com as regras especificadas para cada tipo de elemento, seja pri (prioritário) ou var (variável). Isso permite a criação e manipulação de conexões entre elementos da rede, o que é útil em diversas aplicações, como sistemas de inferência e processamento de informações.
 
 ### Função `interact` da Estrutura `Net`:
 
@@ -812,6 +823,37 @@ Função interact(a, b):
         Emita um erro
 ```
 
+A função `interact` da Estrutura `Net` é uma função complexa que define as interações entre diferentes tipos de elementos na estrutura. Ela é usada para realizar operações específicas com base nos tipos dos elementos `a` e `b`. Vou explicar as ações realizadas com base nos tipos dos elementos:
+
+1. Se `a` for uma referência (`ref`) e `b` for prioritário (`pri`) e não for do tipo `skp`, ela atribui `a` a `deref(book, a, b)`.
+2. Se `b` for uma referência (`ref`) e `a` for prioritário (`pri`) e não for do tipo `skp`, ela atribui `b` a `deref(book, b, a)`.
+3. Se ambos `a` e `b` forem do tipo `ctr` e tiverem a mesma tag, ela executa a função `anni(a, b)`.
+4. Se ambos `a` e `b` forem do tipo `ctr`, mas tiverem tags diferentes, ela executa a função `comm(a, b)`.
+5. Se `a` ou `b` forem do tipo `era`, ela incrementa a variável `eras` em 1.
+6. Se `a` for do tipo `ctr` e `b` for do tipo `era`, ela executa a função `era2(a)`.
+7. Se `a` for do tipo `era` e `b` for do tipo `ctr`, ela executa a função `era2(b)`.
+8. Se `a` for uma referência (`ref`) e `b` for do tipo `era`, ela incrementa a variável `eras` em 1.
+9. Se `a` for do tipo `era` e `b` for uma referência (`ref`), ela incrementa a variável `eras` em 1.
+10. Se ambos `a` e `b` forem do tipo `era`, ela incrementa a variável `eras` em 1.
+11. Se `a` for do tipo `var`, ela incrementa a variável `eras` em 1 e chama a função `link(a, b)`.
+12. Se `b` for do tipo `var`, ela incrementa a variável `eras` em 1 e chama a função `link(b, a)`.
+13. Se `a` for do tipo `ctr` e `b` for do tipo `num`, ela chama a função `copy(a, b)`.
+14. Se `a` for do tipo `num` e `b` for do tipo `ctr`, ela chama a função `copy(b, a)`.
+15. Se ambos `a` e `b` forem do tipo `num`, ela incrementa a variável `eras` em 1.
+16. Se `a` for do tipo `op2` e `b` for do tipo `num`, ela chama a função `op2n(a, b)`.
+17. Se `a` for do tipo `num` e `b` for do tipo `op2`, ela chama a função `op2n(b, a)`.
+18. Se `a` for do tipo `op1` e `b` for do tipo `num`, ela chama a função `op1n(a, b)`.
+19. Se `a` for do tipo `num` e `b` for do tipo `op1`, ela chama a função `op1n(b, a)`.
+20. Se `a` for do tipo `mat` e `b` for do tipo `num`, ela chama a função `mtch(a, b)`.
+21. Se `a` for do tipo `num` e `b` for do tipo `mat`, ela chama a função `mtch(b, a)`.
+22. Se `a` for do tipo `mat` e `b` for do tipo `ctr`, ela executa a função `comm(a, b)`.
+23. Se `a` for do tipo `ctr` e `b` for do tipo `mat`, ela executa a função `comm(b, a)`.
+24. Se `a` for do tipo `mat` e `b` for do tipo `era`, ela executa a função `era2(a)`.
+25. Se `a` for do tipo `era` e `b` for do tipo `mat`, ela executa a função `era2(b)`.
+26. Caso nenhum dos casos acima seja satisfeito, um erro é emitido.
+
+A função `interact` é fundamental para as operações de interação entre diferentes tipos de elementos na estrutura `Net`, permitindo a realização de diversas operações de processamento de informações e lógica na rede.
+
 ### Função `conn` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -845,6 +887,14 @@ Função conn(a, b):
     Libere a memória referente a `b`
 ```
 
+A função `conn` da Estrutura `Net` tem o propósito de realizar a conexão entre dois elementos `a` e `b` na rede. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `anni` em 1. Isso é um indicativo de uma nova conexão sendo estabelecida.
+2. Em seguida, a função realiza uma série de chamadas à função `link` para criar conexões entre os elementos `P1` e `P2` de `a` com os elementos derivados de `P2` de `b`, e vice-versa. Isso estabelece conexões bidirecionais entre esses elementos.
+3. Após as conexões serem estabelecidas, a função libera a memória referente aos elementos `a` e `b`.
+
+Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net`, o que pode ser útil em várias aplicações, como em sistemas de inferência, onde as conexões representam relações lógicas entre conceitos ou entidades. O aumento de `anni` é importante para acompanhar a evolução da rede e das conexões ao longo do tempo.
+
 ### Função `anni` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -877,6 +927,14 @@ Função anni(a, b):
     Libere a memória referente a `a`
     Libere a memória referente a `b`
 ```
+A função `anni` da Estrutura `Net` tem o propósito de realizar uma ação de aninhamento, que envolve a criação de conexões entre elementos e o incremento do valor da variável `anni`. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `anni` em 1. Esse incremento é um indicativo de que uma nova operação de aninhamento está ocorrendo.
+2. Em seguida, a função realiza uma série de chamadas à função `link` para criar conexões entre os valores de `P1` com valores derivados de `a` e `b`, e também entre os valores de `P2` com valores derivados de `a` e `b`. Isso estabelece múltiplas conexões entre os elementos envolvidos no aninhamento.
+3. Após as conexões serem estabelecidas, a função libera a memória referente aos elementos `a` e `b`, indicando que esses elementos não são mais necessários.
+
+Essa função é usada para realizar operações de aninhamento e criação de conexões em uma estrutura de rede, comumente encontrada em sistemas de processamento de informações e lógica. O incremento de `anni` é importante para acompanhar e controlar as operações de aninhamento ao longo do tempo.
+
 
 ### Função `comm` da Estrutura `Net`:
 
@@ -952,6 +1010,21 @@ Função comm(a, b):
     Incrementa o valor de `used` em 4
 ```
 
+A função `comm` da Estrutura `Net` tem a finalidade de realizar uma comunicação entre dois elementos `a` e `b`, onde são estabelecidas várias conexões específicas entre eles, além de realizar alocações de memória para armazenar informações relacionadas a essa comunicação. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `comm` em 1. Isso é um indicativo de uma nova operação de comunicação.
+2. Em seguida, a função aloca 4 slots de memória em `loc` para armazenar informações sobre a comunicação.
+3. A função realiza uma série de chamadas à função `link` para criar conexões entre os valores de `P1` com valores derivados de `a` e `b`, e também entre os valores de `P2` com valores derivados de `a` e `b`. Isso estabelece conexões entre esses elementos.
+4. A função também cria conexões adicionais, vinculando o valor de `P1` com um valor derivado de `b` e o valor de `P2` com um valor derivado de `a`.
+5. Em seguida, a função aloca 2 slots de memória em `space` com valor zero.
+6. Inicia um loop enquanto o valor de `space` for menor que 4.
+7. No loop, a função verifica se o valor do índice `next` no vetor `data` é maior ou igual ao comprimento do vetor. Se isso for verdade, ela redefine o valor de `space` como 0 e define o valor de `next` como 1.
+8. A função também verifica se o valor do índice `next` no vetor `data` para o porto `P1` é igual a NULL. Se for, ela incrementa o valor de `space` em 1. Caso contrário, atribui 0 ao valor de `space` e incrementa o valor de `next` em 1.
+9. Após o loop, a função incrementa o valor de `used` em 4, indicando que 4 slots de memória estão em uso.
+10. A função encerra e retorna.
+
+Essa função é usada para estabelecer conexões complexas entre elementos na estrutura `Net` durante uma operação de comunicação, e também para gerenciar alocações de memória relacionadas a essa operação. Isso é importante em sistemas de processamento de informações onde a comunicação e o gerenciamento de recursos são fundamentais.
+
 ### Função `pass` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -981,6 +1054,14 @@ Função pass(a, b):
     Link do valor de P2 com um valor derivado de `a`
     Retorne
 ```
+A função `pass` da Estrutura `Net` tem o propósito de realizar uma ação de passagem de informações entre dois elementos `a` e `b`. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `comm` em 1. Isso é um indicativo de uma nova operação de comunicação.
+2. A função aloca 3 slots de memória em `loc` para armazenar informações relacionadas à passagem.
+3. A função realiza uma série de chamadas à função `link` para criar conexões entre os valores de `P2` com valores derivados de `b`, entre o valor de `P1` com um valor derivado de `a`, e entre o valor de `P2` com um valor derivado de `a`.
+4. Após a criação das conexões, a função retorna.
+
+Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net` durante uma operação de passagem de informações, que pode ser útil em diversas aplicações, como sistemas de comunicação e processamento de dados. O incremento de `comm` é importante para acompanhar e controlar as operações de comunicação ao longo do tempo.
 
 ### Função `copy` da Estrutura `Net`:
 
@@ -1014,6 +1095,15 @@ Função copy(a, b):
     Retorne
 ```
 
+A função `copy` da Estrutura `Net` tem o propósito de realizar uma operação de cópia de informações de um elemento `a` para um elemento `b`. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `comm` em 1. Isso é um indicativo de uma nova operação de cópia.
+2. A função obtém os valores dos portos `P1` e `P2` do elemento `a.val()`. Isso indica que a função está adquirindo informações do elemento `a` para copiá-las para o elemento `b`.
+3. A função realiza duas chamadas à função `link` para criar conexões entre os valores de `P1` e `P2` de `a.val()` com o elemento `b`. Isso estabelece as conexões necessárias para realizar a cópia das informações.
+4. Após a criação das conexões, a função libera a memória referente a `a.val()`, indicando que essas informações não são mais necessárias.
+
+Essa função é usada para copiar informações específicas de um elemento para outro na estrutura `Net`, o que pode ser útil em diversas aplicações, como sistemas de processamento de dados e lógica. O incremento de `comm` é importante para acompanhar e controlar as operações de cópia ao longo do tempo.
+
 ### Função `era2` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -1045,6 +1135,14 @@ Função era2(a):
     Libere o valor de a.val()
     Retorne
 ```
+A função `era2` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser," que envolve a remoção de informações de um elemento `a` e a criação de conexões com o valor "ERAS." O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia incrementando o valor da variável `eras` em 1. Isso é um indicativo de uma nova operação de "eraser."
+2. A função obtém os valores dos portos `P1` e `P2` do elemento `a.val()`. Isso indica que a função está adquirindo informações do elemento `a` que serão posteriormente apagadas.
+3. A função realiza duas chamadas à função `link` para criar conexões entre os valores de `P1` e `P2` de `a.val()` com o valor "ERAS." Isso remove efetivamente as informações contidas nesses portos e substitui-os pelo valor "ERAS."
+4. Após a criação das conexões, a função libera a memória referente a `a.val()`, indicando que essas informações foram apagadas.
+
+Essa função é usada para realizar operações de apagamento de informações em uma estrutura de rede, o que pode ser útil em sistemas de processamento de dados onde a remoção de informações é necessária. O incremento de `eras` é importante para acompanhar e controlar as operações de apagamento ao longo do tempo.
 
 ### Função `era1` da Estrutura `Net`:
 
@@ -1074,32 +1172,16 @@ Função era1(a):
     Retorne
 ```
 
-### Função `era1` da Estrutura `Net`:
+A função `era1` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser" mais específica, que envolve a remoção de informações de um único porto `P2` do elemento `a` e a criação de uma conexão com o valor "ERAS" nesse porto. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
 
-**Fluxograma**:
+1. A função inicia incrementando o valor da variável `eras` em 1. Isso é um indicativo de uma nova operação de "eraser."
+2. A função obtém o valor do porto `P2` do elemento `a.val()`. Isso indica que a função está adquirindo informações de um único porto de `a` que serão posteriormente apagadas.
+3. A função realiza uma chamada à função `link` para criar uma conexão entre o valor de `P2` de `a.val()` e o valor "ERAS." Isso remove efetivamente as informações contidas no porto `P2` e substitui-o pelo valor "ERAS."
+4. Após a criação da conexão, a função libera a memória referente a `a.val()`, indicando que a informação foi apagada.
 
-```plaintext
-Início
-|
-V
-Incremente o valor de `eras` em 1
-Obtenha o valor de P2 de a.val()
-Link do valor de P2 com o valor ERAS
-Libere o valor de a.val()
-|
-V
-Fim
-```
+Essa função é usada para realizar operações de apagamento específico de informações em uma estrutura de rede, focando em um único porto. O incremento de `eras` é importante para acompanhar e controlar as operações de apagamento ao longo do tempo.
 
-**Pseudocódigo**:
 
-```plaintext
-Função era1(a):
-    Incremente o valor de `eras` em 1
-    Obtenha o valor de P2 de a.val()
-    Link do valor de P2 com o valor ERAS
-    Libere o valor de a.val()
-    Retorne
 ```
 
 ### Função `op2n` da Estrutura `Net`:
