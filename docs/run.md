@@ -1,4 +1,4 @@
-
+     
 
 ```
 ()---()
@@ -1182,7 +1182,7 @@ A função `era1` da Estrutura `Net` tem o propósito de realizar uma operação
 Essa função é usada para realizar operações de apagamento específico de informações em uma estrutura de rede, focando em um único porto. O incremento de `eras` é importante para acompanhar e controlar as operações de apagamento ao longo do tempo.
 
 
-```
+
 
 ### Função `op2n` da Estrutura `Net`:
 
@@ -1222,6 +1222,18 @@ Função op2n(a, b):
     Retorne
 ```
 
+A função `op2n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia obtendo o valor de `p1` a partir de `a.val()`, que representa o primeiro operando da operação.
+2. Em seguida, a função verifica se `p1` é um número:
+   - Se for um número, a função calcula `rt` como o resultado da função `prim` com parâmetros (valor de `p1`, valor de `b`). Isso significa que está realizando uma operação específica com os operandos `p1` e `b`, e o resultado é armazenado em `rt`.
+   - Se `p1` não for um número, a função define o valor do porto `P1` de `a.val()` como `b`. Isso indica que `a` agora possui o valor de `b`.
+3. A função então obtém o valor do porto `P2` de `a.val()`.
+4. A função cria uma conexão entre o novo valor de `NUM` (representando o valor calculado `rt`) e o valor de `P2`.
+5. Finalmente, a função libera a memória referente a `a.val()`.
+
+Essa função é usada para realizar operações específicas envolvendo números na estrutura `Net`. Dependendo do tipo de operando `p1`, a função pode executar diferentes ações, como calcular o resultado da operação ou atribuir um novo valor a `a`. A operação `prim` é usada para realizar o cálculo necessário, e o resultado é armazenado em `rt`.
+
 ### Função `op1n` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -1257,6 +1269,19 @@ Função op1n(a, b):
     Libere o valor de a.val()
     Retorne result
 ```
+
+A função `op1n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
+
+1. A função inicia obtendo o valor de `p1` a partir de `a.val()`, que representa o primeiro operando da operação.
+2. A função também obtém o valor de `p2` a partir de `b.val()`, que representa o segundo operando da operação.
+3. A função extrai `v0` dos bits 0-23 de `p1`.
+4. A função extrai `v1` dos bits 0-23 de `p2`.
+5. A função calcula `v2` como o resultado da função `prim` com os parâmetros `v0` e `v1`. Isso significa que está realizando uma operação específica com os operandos `v0` e `v1`, e o resultado é armazenado em `v2`.
+6. A função cria uma nova instância de `Ptr` com o operador `NUM` e o valor `v2`.
+7. A função define o valor do porto `P2` do novo `Ptr` como a instância `p2`, estabelecendo uma conexão entre eles.
+8. Finalmente, a função libera a memória referente a `a.val()`.
+
+Essa função é usada para realizar operações específicas envolvendo números na estrutura `Net`. Ela extrai partes dos valores `p1` e `p2`, realiza uma operação específica (`prim`), cria uma nova instância de `Ptr` com o resultado e estabelece conexões necessárias. O resultado da operação é retornado como uma nova instância de `Ptr` chamada `result`.
 
 ### Função `prim` da Estrutura `Net`:
 
@@ -1402,6 +1427,65 @@ Função prim(a, b):
     Retorne result
 ```
 
+A função `prim` da Estrutura `Net` desempenha o papel de realizar operações binárias e lógicas em valores numéricos. O processo é determinado pelo operador contido na estrutura e envolve a manipulação dos valores numéricos.
+
+Aqui está a explicação da função com base no fluxograma e pseudocódigo:
+
+1. A função começa obtendo o operador contido na estrutura `a` (denominado `a_opr`) e o operador contido na estrutura `b` (denominado `b_opr`). O operador em `b` não é usado no momento.
+2. A função obtém os valores numéricos de `a` e `b`, denominados `a_val` e `b_val`, respectivamente.
+
+Agora, dependendo do operador `a_opr`, a função executa uma ação específica:
+
+- Se `a_opr` for igual a `USE`:
+  - A função cria um novo valor chamado `result` com os bits 24-28 iguais aos bits 0-3 de `b_val` e os bits 0-23 de `a_val`.
+
+- Se `a_opr` for igual a `ADD`:
+  - A função cria um novo valor `result` que é a soma de `a_val` e `b_val`, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `SUB`:
+  - A função cria um novo valor `result` que é a subtração de `a_val` e `b_val`, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `MUL`:
+  - A função cria um novo valor `result` que é o produto de `a_val` e `b_val`, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `DIV`:
+  - A função cria um novo valor `result` que é a divisão de `a_val` por `b_val`, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `MOD`:
+  - A função cria um novo valor `result` que é o módulo da divisão de `a_val` por `b_val`, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `EQ`:
+  - A função cria um novo valor `result` com o valor 1 se `a_val` for igual a `b_val`, caso contrário, com o valor 0.
+
+- Se `a_opr` for igual a `NE`:
+  - A função cria um novo valor `result` com o valor 1 se `a_val` for diferente de `b_val`, caso contrário, com o valor 0.
+
+- Se `a_opr` for igual a `LT`:
+  - A função cria um novo valor `result` com o valor 1 se `a_val` for menor do que `b_val`, caso contrário, com o valor 0.
+
+- Se `a_opr` for igual a `GT`:
+  - A função cria um novo valor `result` com o valor 1 se `a_val` for maior do que `b_val`, caso contrário, com o valor 0.
+
+- Se `a_opr` for igual a `AND`:
+  - A função cria um novo valor `result` com o resultado da operação lógica `AND` entre `a_val` e `b_val`.
+
+- Se `a_opr` for igual a `OR`:
+  - A função cria um novo valor `result` com o resultado da operação lógica `OR` entre `a_val` e `b_val`.
+
+- Se `a_opr` for igual a `XOR`:
+  - A função cria um novo valor `result` com o resultado da operação lógica `XOR` entre `a_val` e `b_val`.
+
+- Se `a_opr` for igual a `NOT`:
+  - A função cria um novo valor `result` com o resultado da operação lógica `NOT` em `b_val`.
+
+- Se `a_opr` for igual a `LSH`:
+  - A função cria um novo valor `result` com o resultado do deslocamento à esquerda de `a_val` em `b_val` posições, aplicando uma operação de módulo com 2^24.
+
+- Se `a_opr` for igual a `RSH`:
+  - A função cria um novo valor `result` com o resultado do deslocamento à direita de `a_val` em `b_val` posições, aplicando uma operação de módulo com 2^24.
+
+A função retorna o valor `result`, que é o resultado da operação determinada pelo operador `a_opr`. Essa função permite realizar várias operações matemáticas e lógicas com os valores contidos nas estruturas `a` e `b`.
+
 ### Função `mtch` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -1457,6 +1541,31 @@ Função mtch(a, b):
         Link entre o segundo argumento da ponteira (p2) e o local (loc+1) com a tag VR2
         Libere a ponteira (a) na memória heap
 ```
+
+A função `mtch` da Estrutura `Net` realiza operações com ponteiros com base no valor do segundo argumento `b`. Aqui está a explicação da função com base no fluxograma e pseudocódigo:
+
+1. A função começa obtendo o primeiro argumento da ponteira `a` e armazena-o em `p1` usando a função `heap.get`.
+
+2. Em seguida, a função obtém o segundo argumento da ponteira `a` e armazena-o em `p2` usando a função `heap.get`.
+
+3. A função verifica se o valor do segundo argumento, acessando `b.val()`, é igual a 0.
+
+4. Se o valor de `b.val()` for igual a 0, a função realiza as seguintes etapas:
+   - Cria um novo local de memória denominado `loc` na pilha de memória.
+   - Define o valor na posição `(loc+0, P2)` como `ERAS`.
+   - Realiza um link entre o primeiro argumento da ponteira `p1` e o local `(loc+0)` com a tag `CT0`.
+   - Realiza um link entre o segundo argumento da ponteira `p2` e o local `(loc+0)` com a tag `VR1`.
+   - Libera a ponteira `a` na memória `heap`.
+
+5. Se o valor do segundo argumento `b.val()` for diferente de 0, a função realiza as seguintes etapas:
+   - Cria um novo local de memória denominado `loc` na pilha de memória.
+   - Define o valor na posição `(loc+0, P1)` como `ERAS`.
+   - Define o valor na posição `(loc+0, P2)` como uma nova ponteira (`PTR`) com a tag `CT0` e a posição `(loc+1)` como valor.
+   - Realiza um link entre o primeiro argumento da ponteira `p1` e o local `(loc+0)` com a tag `CT0`.
+   - Realiza um link entre o segundo argumento da ponteira `p2` e o local `(loc+1)` com a tag `VR2`.
+   - Libera a ponteira `a` na memória `heap`.
+
+Essa função lida com ponteiros e valores em relação ao valor do segundo argumento `b`. Dependendo do valor de `b`, diferentes operações de ligação e alocação de memória são executadas. Essa função é usada para manipular a estrutura de dados da rede e alocar memória com base nas condições definidas pelo valor de `b`.
 
 ### Função `deref` da Estrutura `Net`:
 
@@ -1520,6 +1629,27 @@ Função deref(book, ptr, parent):
             Define o novo valor de ptr como o nó raiz da rede
     Retorna ptr após todas as expansões
 ```
+A função `deref` da Estrutura `Net` realiza operações de desreferência de ponteiros, expandindo-os conforme necessário. Aqui está a explicação da função com base no fluxograma e pseudocódigo:
+
+1. A função `deref` recebe como entrada um livro (`book`), um ponteiro (`ptr`), e um ponteiro pai (`parent`).
+
+2. A função entra em um loop enquanto `ptr` for um ponteiro do tipo REF, ou seja, um ponteiro que precisa ser desreferenciado.
+
+3. No loop, a função verifica se o `ptr` aponta para uma rede fechada no livro `book`.
+
+4. Se o `ptr` apontar para uma rede fechada no livro, a função realiza as seguintes etapas:
+   - Carrega a rede fechada do livro.
+   - Ajusta os nós da rede com um novo local (`loc`) na memória do heap.
+   - Conecta os nós da rede ao local atual (`loc`) no heap.
+   - Carrega os redexes da rede.
+   - Ajusta os redexes com base no local (`loc`) atual.
+   - Conecta os redexes ajustados ao heap.
+   - Define o novo valor de `ptr` como o nó raiz da rede fechada.
+
+5. Após todas as expansões, a função retorna o valor de `ptr`.
+
+Essa função é usada para desreferenciar ponteiros que apontam para redes fechadas, permitindo o acesso aos nós e redexes dessas redes. É uma parte fundamental para a manipulação de estruturas de rede na estrutura `Net`.
+
 
 ### Função `expand` da Estrutura `Net`:
 
@@ -1567,6 +1697,21 @@ Função expand(book, dir):
         Define o novo alvo (exp) como o alvo da direção (dir)
 ```
 
+A função `expand` da Estrutura `Net` é responsável por expandir um ponteiro, o que envolve desreferenciar o ponteiro e realizar operações com base no tipo do ponteiro. Aqui está uma explicação da função com base no fluxograma e pseudocódigo fornecidos:
+
+1. A função `expand` inicia obtendo o alvo (`ptr`) usando a função `get_target`.
+
+2. Em seguida, a função verifica o tipo do alvo (`ptr`):
+   - Se o alvo (`ptr`) for um contador (CTR), a função expande a cabeça do contador chamando a subfunção `expand` para `VR1` e depois para `VR2`. Isso implica expandir ambos os lados do contador.
+   - Senão, se o alvo (`ptr`) for uma referência (REF):
+     - A função `deref` é chamada com o livro (`book`), o alvo (`ptr`), e a direção (`dir`). A função `deref` é responsável por desreferenciar o ponteiro e expandi-lo conforme necessário.
+     - O valor retornado pela função `deref` é definido como o novo alvo (`ptr`).
+     - O novo alvo (`ptr`) é definido como o alvo da direção (`dir`).
+
+3. Após as expansões, a função termina.
+
+Essa função é fundamental para a manipulação de ponteiros e redes na estrutura `Net`, permitindo a exploração de estruturas de dados mais complexas e a realização de operações em seus elementos. Ela expande tanto contadores quanto referências, garantindo que os ponteiros sejam desreferenciados e manipulados adequadamente.
+
 ### Função `reduce` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -1610,6 +1755,24 @@ Função reduce(book):
         Copia a lista de redexes novamente
 ```
 
+A função `reduce` da Estrutura `Net` é responsável por realizar a redução de redexes na rede. Aqui está uma explicação da função com base no fluxograma e pseudocódigo fornecidos:
+
+1. A função `reduce` inicia copiando a lista de redexes para uma variável chamada `rdex`.
+
+2. Em seguida, a função entra em um loop enquanto a lista `rdex` não estiver vazia.
+
+3. Dentro do loop, a função itera sobre cada redex (par de redexes) `(a, b)` na lista `rdex`.
+
+4. Para cada redex `(a, b)`, a função chama a subfunção `interact` com os redexes `(a, b)` e o livro (`book`). A função `interact` é responsável por processar a interação entre os redexes e aplicar as regras de redução apropriadas.
+
+5. Após processar todos os redexes na lista `rdex`, a função limpa a lista de redexes, tornando-a vazia.
+
+6. A função copia a lista de redexes novamente, que pode ter sido atualizada durante a interação dos redexes. Isso permite que novos redexes sejam descobertos e processados na próxima iteração.
+
+7. O loop continua até que a lista `rdex` esteja vazia, indicando que não há mais redexes a serem reduzidos.
+
+Essa função desempenha um papel crucial na execução de reduções na rede, permitindo que os redexes sejam identificados e manipulados de acordo com as regras específicas da estrutura `Net`. Isso é fundamental para a computação realizada pela rede.
+
 ### Função `normal` da Estrutura `Net`:
 
 **Fluxograma**:
@@ -1646,4 +1809,20 @@ Função normal(book):
         Chama a função reduce com o livro book
         Chama expand com o ponteiro ROOT e o livro book
 ```
+
+A função `normal` da Estrutura `Net` é responsável por normalizar a rede, o que envolve a redução de redexes até que não haja mais redexes na rede. Aqui está uma explicação da função com base no fluxograma e pseudocódigo fornecidos:
+
+1. A função `normal` começa recebendo uma referência para o `livro` como seu parâmetro. O `livro` pode ser uma parte importante da estrutura `Net` que contém informações adicionais necessárias para a normalização da rede.
+
+2. Em seguida, a função chama a subfunção `expand` com um ponteiro `ROOT` e o `livro`. A subfunção `expand` é responsável por expandir a rede e descobrir redexes.
+
+3. A função entra em um loop que continua enquanto houver redexes na rede. Os redexes são expressões da rede que podem ser reduzidas de acordo com as regras específicas da estrutura `Net`.
+
+4. Dentro do loop, a função chama a subfunção `reduce` com o `livro`. A subfunção `reduce` é responsável por realizar a redução de redexes na rede.
+
+5. Após a redução dos redexes, a função chama novamente a subfunção `expand` com o ponteiro `ROOT` e o `livro`. Isso permite que a rede seja expandida novamente, e novos redexes possam ser descobertos ou a rede possa ser reconfigurada após a redução.
+
+6. O loop continua até que não haja mais redexes na rede. Quando todos os redexes foram reduzidos, a função conclui sua tarefa.
+
+Essa função desempenha um papel central na normalização da rede, assegurando que todos os redexes sejam reduzidos de acordo com as regras da estrutura `Net`. A normalização é um passo importante em sistemas de redução ou computação formal, onde a expressão é simplificada até que alcance um estado irreversível.
 
