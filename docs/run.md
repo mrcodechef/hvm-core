@@ -996,7 +996,8 @@ Essa função é fundamental para a manipulação de ponteiros e redes na estrut
 
 A função `reduce` da Estrutura `Net` é responsável por realizar a redução de redexes na rede.
 
-**Fluxograma**:
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -1011,6 +1012,7 @@ V
 Chame a função "interact" com os argumentos (net, book, a, b)
 Fim
 ```
+</details>
 
 **Pseudocódigo**:
 
@@ -1030,7 +1032,8 @@ Essa função desempenha um papel crucial na execução de reduções na rede, p
 
 A função `normal` da Estrutura `Net` é responsável por normalizar a rede, o que envolve a redução de redexes até que não haja mais redexes na rede.
 
-**Fluxograma**:
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -1049,7 +1052,7 @@ Chama a função reduce com o livro (book) e função expand com um ponteiro (RO
 |
 Fim
 ```
-
+</details>
 **Pseudocódigo**:
 
 ```plaintext
