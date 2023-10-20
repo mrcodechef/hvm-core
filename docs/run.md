@@ -467,8 +467,8 @@ Essa função é usada para estabelecer conexões complexas entre elementos na e
 
 A função `pass` da Estrutura `Net` tem o propósito de realizar uma ação de passagem de informações entre dois elementos `a` e `b`.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -482,6 +482,7 @@ Link do valor de P2 com um valor derivado de `a`
 V
 Fim
 ```
+</details>
 
 **Diagrama**:
 
@@ -512,8 +513,8 @@ Essa função é usada para estabelecer conexões específicas entre elementos n
 
 A função `copy` da Estrutura `Net` tem o propósito de realizar uma operação de cópia de informações de um elemento `a` para um elemento `b`.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
  |
@@ -532,6 +533,7 @@ Definir os alvos das portas principais de A para apontar para a cópia de B
 Liberar o nó A
 Fim
 ```
+</details>
 
 **Pseudocódigo**:
 
