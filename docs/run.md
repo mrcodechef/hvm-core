@@ -863,29 +863,41 @@ Início
 |
 V
 Incremente o valor de `anni` em 1
-Link o valor de P1 com um valor derivado de P2 em `a`
-Link o valor de P1 com um valor derivado de P2 em `b`
-Link o valor de P2 com um valor derivado de P1 em `a`
-Link o valor de P2 com um valor derivado de P1 em `b`
+Obtenha o valor de P2 de `a` e P2 de `b`
+|
+V
+Link o valor de P2 de `a` ao valor de P2 de `b`
+|
+V
 Libere a memória referente a `a`
 Libere a memória referente a `b`
 |
 V
 Fim
 ```
+**Diagrama**:
+
+```
+A2 --[#X}---[#Z}-- B2
+~~~~~~~~~~~~~~~~~~~ OP1-OP1 
+          ,----- B2
+         X
+A2 -----' 
+```
+
 
 **Pseudocódigo**:
 
 ```plaintext
 Função conn(a, b):
     Incremente o valor de `anni` em 1
-    Link o valor de P1 com um valor derivado de P2 em `a`
-    Link o valor de P1 com um valor derivado de P2 em `b`
-    Link o valor de P2 com um valor derivado de P1 em `a`
-    Link o valor de P2 com um valor derivado de P1 em `b`
-    Libere a memória referente a `a`
-    Libere a memória referente a `b`
+    Obtém o valor de P2 de `a` e P2 de `b`
+    Link o valor de P2 de `a` ao valor de P2 de `b`
+    Libera a memória referente a `a`
+    Libera a memória referente a `b`
 ```
+
+Lembre-se de que este é um pseudocódigo simplificado e um fluxograma de alto nível para a função `conn`. Você pode detalhar mais o fluxograma ou adaptar o pseudocódigo com base nos requisitos específicos da função e nas peculiaridades do seu código.
 
 A função `conn` da Estrutura `Net` tem o propósito de realizar a conexão entre dois elementos `a` e `b` na rede. O processo é descrito no fluxograma e pseudocódigo da seguinte forma:
 
@@ -913,6 +925,18 @@ Libere a memória referente a `b`
 |
 V
 Fim
+```
+
+**Diagrama**:
+
+```
+A1 --|\     /|-- B2
+     |a|---|b|   
+A2 --|/     \|-- B1
+~~~~~~~~~~~~~~~~~~~ CTR-CTR (A == B)
+A1 -----, ,----- B2
+         X
+A2 -----' '----- B1
 ```
 
 **Pseudocódigo**:
@@ -983,6 +1007,22 @@ V
 Incrementa o valor de `used` em 4
 Retorne
 ```
+**Diagrama**:
+
+```
+A1 --|\         /|-- B2
+     |a|-------|b|   
+A2 --|/         \|-- B1
+~~~~~~~~~~~~~~~~~~~~~~~ CTR-CTR (A != B)
+      /|-------|\
+A1 --|b|       |a|-- B2
+      \|--, ,--|/
+           X
+      /|--' '--|\
+A2 --|b|       |a|-- B1
+      \|-------|/
+```
+
 
 **Pseudocódigo**:
 
@@ -1041,6 +1081,17 @@ Link do valor de P2 com um valor derivado de `a`
 |
 V
 Fim
+```
+
+**Diagrama**:
+
+```
+WIP
+A1 --|\         
+     |a|-------[#Z}-- B2   
+A2 --|/         
+~~~~~~~~~~~~~~~~~~~~~~~ CTR-OP1 
+TODO
 ```
 
 **Pseudocódigo**:
@@ -1123,6 +1174,17 @@ V
 Fim
 ```
 
+**Diagrama**:
+
+```
+A1 --|\
+     |a|-- ()
+A2 --|/
+~~~~~~~~~~~~~ {CTR/OP2/MAT}-ERA
+A1 ------- ()
+A2 ------- ()
+```
+
 **Pseudocódigo**:
 
 ```plaintext
@@ -1159,6 +1221,13 @@ Libere o valor de a.val()
 |
 V
 Fim
+```
+**Diagrama**:
+
+```
+A2 --[#X}-- ()
+~~~~~~~~~~~~~ OP1-ERA
+A2 ------- ()
 ```
 
 **Pseudocódigo**:
@@ -1205,6 +1274,16 @@ Libere o valor de a.val()
 V
 Fim
 ```
+
+**Diagrama**:
+```
+A1 --,
+     [}-- #X
+A2 --' 
+~~~~~~~~~~~~~~ OP2-NUM
+A2 --[#X}-- A1
+```
+
 
 **Pseudocódigo**:
 
@@ -1253,6 +1332,14 @@ Libere o valor de a.val()
 |
 V
 Fim
+```
+
+**Diagrama**:
+
+```
+A1 --[#X}-- #Y
+~~~~~~~~~~~~~~ OP1-NUM
+A1 -- #Z
 ```
 
 **Pseudocódigo**:
@@ -1520,6 +1607,28 @@ V
 Fim
 ```
 
+**Diagrama**:
+
+```
+A1 --,
+     (?)-- #X
+A2 --' 
+~~~~~~~~~~~~~~~~~~ MAT-NUM (#X > 0)
+           /|-- A2
+      /|--| |
+A1 --| |   \|-- #(X-1)
+      \|-- ()
+
+A1 --,
+     (?)-- #X
+A2 --' 
+~~~~~~~~~~~~~~~~~~ MAT-NUM (#X == 0)
+      /|-- ()
+A1 --| |   
+      \|-- A2
+```
+
+
 **Pseudocódigo**:
 
 ```plaintext
@@ -1612,6 +1721,19 @@ Retorna o ptr após todas as expansões
 |
 V
 Fim
+```
+
+
+**Diagrama**:
+
+```
+A1 --|\
+     | |-- @REF
+A2 --|/
+~~~~~~~~~~~~~~~~ CTR-REF
+A1 --|\
+     | |-- {val}
+A2 --|/
 ```
 
 **Pseudocódigo**:
