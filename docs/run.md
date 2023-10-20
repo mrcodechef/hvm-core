@@ -112,8 +112,22 @@ Fim
 
 Aqui está um fluxograma simplificado e pseudocódigo para a função `compact` na estrutura `Heap`:
 
-**Fluxograma**:
+**Pseudocódigo**:
 
+```plaintext
+Função compact():
+    Crie uma lista vazia chamada "nó".
+    Repita enquanto o comprimento de "nó" for menor que o comprimento dos dados da heap:
+        Se o primeiro componente do nó atual não for NULL ou o segundo componente não for NULL, adicione-o à lista "nó".
+        Caso contrário, saia do loop.
+    Retorne o "nó".
+Fim da Função
+```
+
+Esta função cria uma lista chamada "node" e preenche-a com os valores contidos em "data" até encontrar um par de valores (NULL, NULL). Em seguida, retorna a lista "node" como resultado.
+
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -131,26 +145,32 @@ V
 Retorne a lista "node" como resultado da função
 Fim
 ```
-
-**Pseudocódigo**:
-
-```plaintext
-Função compact():
-    Crie uma lista vazia chamada "nó".
-    Repita enquanto o comprimento de "nó" for menor que o comprimento dos dados da heap:
-        Se o primeiro componente do nó atual não for NULL ou o segundo componente não for NULL, adicione-o à lista "nó".
-        Caso contrário, saia do loop.
-    Retorne o "nó".
-Fim da Função
-```
-
-Esta função cria uma lista chamada "node" e preenche-a com os valores contidos em "data" até encontrar um par de valores (NULL, NULL). Em seguida, retorna a lista "node" como resultado.
+</details>
 
 ### Função `link` da Estrutura `Net`
 
 A função `link` da Estrutura `Net` tem a finalidade de estabelecer conexões entre elementos, dependendo de seus tipos.
 
-**Fluxograma**:
+**Pseudocódigo**:
+
+```plaintext
+Função link(a, b):
+    Se a é pri e b é pri:
+        Se a e b podem ser pulados:
+            Incremente eras em 1
+        Senão:
+            Adicione (a, b) à lista de redexes `rdex`
+    Senão, se a é var:
+        Substitua o destino de a pelo valor de b
+    Senão, se b é var:
+        Substitua o destino de b pelo valor de a
+    Fim
+```
+
+Dessa forma, a função `link` realiza a ligação ou conexão entre elementos da estrutura `Net` de acordo com as regras especificadas para cada tipo de elemento, seja pri (prioritário) ou var (variável). Isso permite a criação e manipulação de conexões entre elementos da rede, o que é útil em diversas aplicações, como sistemas de inferência e processamento de informações.
+
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -194,48 +214,11 @@ Se b é var:
 Fim
 ```
 
-**Pseudocódigo**:
-
-```plaintext
-Função link(a, b):
-    Se a é pri e b é pri:
-        Se a e b podem ser pulados:
-            Incremente eras em 1
-        Senão:
-            Adicione (a, b) à lista de redexes `rdex`
-    Senão, se a é var:
-        Substitua o destino de a pelo valor de b
-    Senão, se b é var:
-        Substitua o destino de b pelo valor de a
-    Fim
-```
-
-Dessa forma, a função `link` realiza a ligação ou conexão entre elementos da estrutura `Net` de acordo com as regras especificadas para cada tipo de elemento, seja pri (prioritário) ou var (variável). Isso permite a criação e manipulação de conexões entre elementos da rede, o que é útil em diversas aplicações, como sistemas de inferência e processamento de informações.
+</details>
 
 ### Função `interact` da Estrutura `Net`
 
 A função `interact` da Estrutura `Net` é uma função complexa que define as interações entre diferentes tipos de elementos na estrutura. Ela é usada para realizar operações específicas com base nos tipos dos elementos `a` e `b`.
-
-**Fluxograma**:
-
-```plaintext
-Função interact(a, b)
-    Se a e b são do mesmo tipo de nó (por exemplo, ambos são do tipo CTR)
-        Se a é igual a b (com base em algum critério específico)
-            Chamar a função anni(a, b)
-        Senão
-            Chamar a função comm(a, b)
-    Senão se a é um tipo de nó específico (por exemplo, CTR)
-        Se a e b têm o mesmo tag
-            Chamar a função anni(a, b)
-        Senão
-            Chamar a função comm(a, b)
-    Senão se b é um tipo de nó específico (por exemplo, CTR)
-        Chamar a função comm(b, a)
-    Senão
-        Chamar a função era2(a)
-    Fim da Função
-```
 
 **Pseudocódigo**:
 
@@ -274,11 +257,59 @@ Fim
 
 A função `interact` é fundamental para as operações de interação entre diferentes tipos de elementos na estrutura `Net`, permitindo a realização de diversas operações de processamento de informações e lógica na rede.
 
+<details>
+  <summary>Fluxograma</summary>
+
+```plaintext
+Função interact(a, b)
+    Se a e b são do mesmo tipo de nó (por exemplo, ambos são do tipo CTR)
+        Se a é igual a b (com base em algum critério específico)
+            Chamar a função anni(a, b)
+        Senão
+            Chamar a função comm(a, b)
+    Senão se a é um tipo de nó específico (por exemplo, CTR)
+        Se a e b têm o mesmo tag
+            Chamar a função anni(a, b)
+        Senão
+            Chamar a função comm(a, b)
+    Senão se b é um tipo de nó específico (por exemplo, CTR)
+        Chamar a função comm(b, a)
+    Senão
+        Chamar a função era2(a)
+    Fim da Função
+```
+
+</details>
+
 ### Função `conn` da Estrutura `Net`
 
 A função `conn` da Estrutura `Net` tem o propósito de realizar a conexão entre dois elementos `a` e `b` na rede.
 
-**Fluxograma**:
+**Pseudocódigo**:
+
+```plaintext
+Função conn(a, b):
+    Incremente o valor de `anni` em 1
+    Obtém o valor de P2 de `a` e P2 de `b`
+    Link o valor de P2 de `a` ao valor de P2 de `b`
+    Libera a memória referente a `a`
+    Libera a memória referente a `b`
+```
+
+**Diagrama**:
+
+```
+A2 --[#X}---[#Z}-- B2
+~~~~~~~~~~~~~~~~~~~ OP1-OP1 
+          ,----- B2
+         X
+A2 -----' 
+```
+
+Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net`, o que pode ser útil em várias aplicações, como em sistemas de inferência, onde as conexões representam relações lógicas entre conceitos ou entidades. O aumento de `anni` é importante para acompanhar a evolução da rede e das conexões ao longo do tempo.
+
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -297,34 +328,41 @@ Libere a memória referente a `b`
 Fim
 ```
 
-**Diagrama**:
-
-```
-A2 --[#X}---[#Z}-- B2
-~~~~~~~~~~~~~~~~~~~ OP1-OP1 
-          ,----- B2
-         X
-A2 -----' 
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função conn(a, b):
-    Incremente o valor de `anni` em 1
-    Obtém o valor de P2 de `a` e P2 de `b`
-    Link o valor de P2 de `a` ao valor de P2 de `b`
-    Libera a memória referente a `a`
-    Libera a memória referente a `b`
-```
-
-Essa função é usada para estabelecer conexões específicas entre elementos na estrutura `Net`, o que pode ser útil em várias aplicações, como em sistemas de inferência, onde as conexões representam relações lógicas entre conceitos ou entidades. O aumento de `anni` é importante para acompanhar a evolução da rede e das conexões ao longo do tempo.
+</details>
 
 ### Função `anni` da Estrutura `Net`
 
 A função `anni` da Estrutura `Net` tem o propósito de realizar uma ação de aninhamento, que envolve a criação de conexões entre elementos e o incremento do valor da variável `anni`.
 
-**Fluxograma**:
+**Pseudocódigo**:
+
+```plaintext
+Função anni(a, b):
+    Incremente o valor de `anni` em 1
+    Link do valor de P1 com um valor derivado de `a`
+    Link do valor de P1 com um valor derivado de `b`
+    Link do valor de P2 com um valor derivado de `a`
+    Link do valor de P2 com um valor derivado de `b`
+    Libere a memória referente a `a`
+    Libere a memória referente a `b`
+```
+
+**Diagrama**:
+
+```
+A1 --|\     /|-- B2
+     |a|---|b|   
+A2 --|/     \|-- B1
+~~~~~~~~~~~~~~~~~~~ CTR-CTR (A == B)
+A1 -----, ,----- B2
+         X
+A2 -----' '----- B1
+```
+
+Essa função é usada para realizar operações de aninhamento e criação de conexões em uma estrutura de rede, comumente encontrada em sistemas de processamento de informações e lógica. O incremento de `anni` é importante para acompanhar e controlar as operações de aninhamento ao longo do tempo.
+
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -342,38 +380,58 @@ V
 Fim
 ```
 
-**Diagrama**:
-
-```
-A1 --|\     /|-- B2
-     |a|---|b|   
-A2 --|/     \|-- B1
-~~~~~~~~~~~~~~~~~~~ CTR-CTR (A == B)
-A1 -----, ,----- B2
-         X
-A2 -----' '----- B1
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função anni(a, b):
-    Incremente o valor de `anni` em 1
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Libere a memória referente a `a`
-    Libere a memória referente a `b`
-```
-
-Essa função é usada para realizar operações de aninhamento e criação de conexões em uma estrutura de rede, comumente encontrada em sistemas de processamento de informações e lógica. O incremento de `anni` é importante para acompanhar e controlar as operações de aninhamento ao longo do tempo.
+</details>
 
 ### Função `comm` da Estrutura `Net`
 
 A função `comm` da Estrutura `Net` tem a finalidade de realizar uma comunicação entre dois elementos `a` e `b`, onde são estabelecidas várias conexões específicas entre eles, além de realizar alocações de memória para armazenar informações relacionadas a essa comunicação.
 
-**Fluxograma**:
+**Pseudocódigo**:
+
+```plaintext
+Função comm(a, b):
+    Incremente o valor de `comm` em 1
+    Aloque 4 slots de memória em `loc`
+    Link do valor de P1 com um valor derivado de `a`
+    Link do valor de P1 com um valor derivado de `b`
+    Link do valor de P2 com um valor derivado de `a`
+    Link do valor de P2 com um valor derivado de `b`
+    Link do valor de P1 com um valor derivado de `b`
+    Link do valor de P2 com um valor derivado de `a`
+    Link do valor de P1 com um valor derivado de `a`
+    Link do valor de P2 com um valor derivado de `b`
+    Aloque 2 slots de memória em `space` com valor zero
+    Enquanto o valor de `space` for menor que 4:
+        Se o valor do índice `next` no vetor `data` for maior ou igual ao comprimento do vetor:
+            Atribua 0 ao valor de `space`
+            Defina o valor de `next` como 1
+        Se o valor do índice `next` no vetor `data` para o porto `P1` for igual a NULL:
+            Incremente o valor de `space` em 1
+        Senão, atribua 0 ao valor de `space`
+            Incremente o valor de `next` em 1
+    Incrementa o valor de `used` em 4
+```
+
+**Diagrama**:
+
+```
+A1 --|\         /|-- B2
+     |a|-------|b|   
+A2 --|/         \|-- B1
+~~~~~~~~~~~~~~~~~~~~~~~ CTR-CTR (A != B)
+      /|-------|\
+A1 --|b|       |a|-- B2
+      \|--, ,--|/
+           X
+      /|--' '--|\
+A2 --|b|       |a|-- B1
+      \|-------|/
+```
+
+Essa função é usada para estabelecer conexões complexas entre elementos na estrutura `Net` durante uma operação de comunicação, e também para gerenciar alocações de memória relacionadas a essa operação. Isso é importante em sistemas de processamento de informações onde a comunicação e o gerenciamento de recursos são fundamentais.
+
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -419,49 +477,7 @@ Incrementa o valor de `used` em 4
 Retorne
 ```
 
-**Diagrama**:
-
-```
-A1 --|\         /|-- B2
-     |a|-------|b|   
-A2 --|/         \|-- B1
-~~~~~~~~~~~~~~~~~~~~~~~ CTR-CTR (A != B)
-      /|-------|\
-A1 --|b|       |a|-- B2
-      \|--, ,--|/
-           X
-      /|--' '--|\
-A2 --|b|       |a|-- B1
-      \|-------|/
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função comm(a, b):
-    Incremente o valor de `comm` em 1
-    Aloque 4 slots de memória em `loc`
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Link do valor de P1 com um valor derivado de `b`
-    Link do valor de P2 com um valor derivado de `a`
-    Link do valor de P1 com um valor derivado de `a`
-    Link do valor de P2 com um valor derivado de `b`
-    Aloque 2 slots de memória em `space` com valor zero
-    Enquanto o valor de `space` for menor que 4:
-        Se o valor do índice `next` no vetor `data` for maior ou igual ao comprimento do vetor:
-            Atribua 0 ao valor de `space`
-            Defina o valor de `next` como 1
-        Se o valor do índice `next` no vetor `data` para o porto `P1` for igual a NULL:
-            Incremente o valor de `space` em 1
-        Senão, atribua 0 ao valor de `space`
-            Incremente o valor de `next` em 1
-    Incrementa o valor de `used` em 4
-```
-
-Essa função é usada para estabelecer conexões complexas entre elementos na estrutura `Net` durante uma operação de comunicação, e também para gerenciar alocações de memória relacionadas a essa operação. Isso é importante em sistemas de processamento de informações onde a comunicação e o gerenciamento de recursos são fundamentais.
+</details>
 
 ### Função `pass` da Estrutura `Net`
 
