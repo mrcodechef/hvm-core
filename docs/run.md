@@ -789,7 +789,8 @@ A função retorna o valor `result`, que é o resultado da operação determinad
 
 A função `mtch` da Estrutura `Net` realiza operações com ponteiros com base no valor do segundo argumento `b`.
 
-**Fluxograma**:
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -821,26 +822,7 @@ V
 Fim
 ```
 
-**Diagrama**:
-
-```
-A1 --,
-     (?)-- #X
-A2 --' 
-~~~~~~~~~~~~~~~~~~ MAT-NUM (#X > 0)
-           /|-- A2
-      /|--| |
-A1 --| |   \|-- #(X-1)
-      \|-- ()
-
-A1 --,
-     (?)-- #X
-A2 --' 
-~~~~~~~~~~~~~~~~~~ MAT-NUM (#X == 0)
-      /|-- ()
-A1 --| |   
-      \|-- A2
-```
+</details>
 
 **Pseudocódigo**:
 
@@ -864,14 +846,66 @@ Função mtch(a, b):
         Libere a ponteira (a) na memória heap
 ```
 
+**Diagrama**:
+
+```
+A1 --,
+     (?)-- #X
+A2 --' 
+~~~~~~~~~~~~~~~~~~ MAT-NUM (#X > 0)
+           /|-- A2
+      /|--| |
+A1 --| |   \|-- #(X-1)
+      \|-- ()
+
+A1 --,
+     (?)-- #X
+A2 --' 
+~~~~~~~~~~~~~~~~~~ MAT-NUM (#X == 0)
+      /|-- ()
+A1 --| |   
+      \|-- A2
+```
+
 Essa função lida com ponteiros e valores em relação ao valor do segundo argumento `b`. Dependendo do valor de `b`, diferentes operações de ligação e alocação de memória são executadas. Essa função é usada para manipular a estrutura de dados da rede e alocar memória com base nas condições definidas pelo valor de `b`.
 
 ### Função `deref` da Estrutura `Net`
 
 A função `deref` da Estrutura `Net` realiza operações de desreferência de ponteiros, expandindo-os conforme necessário.
 
-**Fluxograma**:
+**Pseudocódigo**:
 
+```plaintext
+Função deref(book, ptr, parent):
+    Enquanto ptr for um ponteiro do tipo REF:
+        Se ptr apontar para uma rede fechada no livro book:
+            Carrega a rede fechada do livro
+            Ajusta os nós da rede com um novo local (loc)
+            Conecta os nós da rede ao local atual no heap
+            Carrega os redexes da rede
+            Ajusta os redexes com base no local (loc) atual
+            Conecta os redexes ajustados ao heap
+            Define o novo valor de ptr como o nó raiz da rede
+    Retorna ptr após todas as expansões
+```
+
+**Diagrama**:
+
+```
+A1 --|\
+     | |-- @REF
+A2 --|/
+~~~~~~~~~~~~~~~~ CTR-REF
+A1 --|\
+     | |-- {val}
+A2 --|/
+```
+
+Essa função é usada para desreferenciar ponteiros que apontam para redes fechadas, permitindo o acesso aos nós e redexes dessas redes. É uma parte fundamental para a manipulação de estruturas de rede na estrutura `Net`.
+
+<details>
+  <summary>Fluxograma</summary>
+  
 ```plaintext
 Início
 |
@@ -914,35 +948,7 @@ Retorna o ptr após todas as expansões
 Fim
 ```
 
-**Diagrama**:
-
-```
-A1 --|\
-     | |-- @REF
-A2 --|/
-~~~~~~~~~~~~~~~~ CTR-REF
-A1 --|\
-     | |-- {val}
-A2 --|/
-```
-
-**Pseudocódigo**:
-
-```plaintext
-Função deref(book, ptr, parent):
-    Enquanto ptr for um ponteiro do tipo REF:
-        Se ptr apontar para uma rede fechada no livro book:
-            Carrega a rede fechada do livro
-            Ajusta os nós da rede com um novo local (loc)
-            Conecta os nós da rede ao local atual no heap
-            Carrega os redexes da rede
-            Ajusta os redexes com base no local (loc) atual
-            Conecta os redexes ajustados ao heap
-            Define o novo valor de ptr como o nó raiz da rede
-    Retorna ptr após todas as expansões
-```
-
-Essa função é usada para desreferenciar ponteiros que apontam para redes fechadas, permitindo o acesso aos nós e redexes dessas redes. É uma parte fundamental para a manipulação de estruturas de rede na estrutura `Net`.
+</details>
 
 ### Função `expand` da Estrutura `Net`
 
@@ -954,7 +960,7 @@ A função `expand` da Estrutura `Net` é responsável por expandir um ponteiro,
 Início
 |
 V
-Obtém o alvo (ptr) usando a função get_target
+Obtém ptr usando a função get_target
 |
 V
 Se ptr for um ctr então
@@ -972,7 +978,7 @@ Fim
 
 ```plaintext
 Função expand(net, book, dir):
-    Alvo (ptr) <- Obtenha o alvo (ptr) usando a função get_target
+    Obtenha o alvo (ptr) usando a função get_target
     Se ptr for um ctr então:
         Expanda o contador para os portos auxiliares (VR1 e VR2)
     Senão, se ptr for uma referência então:
@@ -1000,7 +1006,6 @@ Para cada redex (a, b) na rede
 |
 V
 Chame a função "interact" com os argumentos (net, book, a, b)
-|
 Fim
 ```
 
@@ -1037,12 +1042,8 @@ V
 Enquanto existirem redexes
 |
 V
-  Chama a função reduce com o livro (book)
-  |
-  V
-  Chama a função expand com um ponteiro (ROOT) e o livro (book)
+Chama a função reduce com o livro (book) e função expand com um ponteiro (ROOT) e o livro (book)
 |
-V
 Fim
 ```
 
