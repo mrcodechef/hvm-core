@@ -550,8 +550,8 @@ Essa função é usada para copiar informações específicas de um elemento par
 
 A função `era2` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser," que envolve a remoção de informações de um elemento `a` e a criação de conexões com o valor "ERAS."
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -566,6 +566,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+</details>
 
 **Diagrama**:
 
@@ -597,8 +598,8 @@ Essa função é usada para realizar operações de apagamento de informações 
 
 A função `era1` da Estrutura `Net` tem o propósito de realizar uma operação de "eraser" mais específica, que envolve a remoção de informações de um único porto `P2` do elemento `a` e a criação de uma conexão com o valor "ERAS" nesse porto.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -611,6 +612,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+</details>
 
 **Diagrama**:
 
@@ -637,7 +639,8 @@ Essa função é usada para realizar operações de apagamento específico de in
 
 A função `op2n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números.
 
-**Fluxograma**:
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -656,6 +659,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+</details>
 
 **Diagrama**:
 
@@ -689,8 +693,8 @@ Essa função é usada para realizar operações específicas envolvendo número
 
 A função `op1n` da Estrutura `Net` tem o propósito de realizar uma operação específica que envolve a manipulação de números.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -707,6 +711,7 @@ Libere o valor de a.val()
 V
 Fim
 ```
+</details>
 
 **Diagrama**:
 
@@ -737,8 +742,8 @@ Essa função é usada para realizar operações específicas envolvendo número
 
 A função `prim` da Estrutura `Net` desempenha o papel de realizar operações binárias e lógicas em valores numéricos.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
  |
@@ -767,6 +772,7 @@ Operador de A é USE?
              Retornar o resultado como um novo nó
 Fim
 ```
+</details>
 
 **Pseudocódigo**:
 
@@ -957,8 +963,8 @@ Fim
 
 A função `expand` da Estrutura `Net` é responsável por expandir um ponteiro, o que envolve desreferenciar o ponteiro e realizar operações com base no tipo do ponteiro.
 
-**Fluxograma**:
-
+<details>
+  <summary>Fluxograma</summary>
 ```plaintext
 Início
 |
@@ -976,6 +982,7 @@ Senão, se ptr for uma referência então
 |--> Expanda a referência e atualize o ponteiro de destino com a expansão
 Fim
 ```
+</details>
 
 **Pseudocódigo**:
 
