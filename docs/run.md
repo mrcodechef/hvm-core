@@ -4,7 +4,32 @@
 
 A função `alloc` na estrutura `Heap` é responsável por alocar uma posição no array de dados, retornando o índice dessa posição. Aqui está um fluxograma simplificado e pseudocódigo para a função `alloc`:
 
-**Fluxograma**:
+**Pseudocódigo**:
+
+```plaintext
+Função alloc(size):
+    Se o tamanho for igual a zero
+        Retorne 0
+    Senão, se o espaço não estiver cheio e houver espaço suficiente após o próximo
+        Aumente o contador de espaço usado pelo tamanho
+        Atualize a próxima posição disponível
+        Retorne a posição anterior da próxima disponível como um valor
+    Senão
+        Defina o espaço como cheio
+        Enquanto houver um espaço contíguo de tamanho disponível
+            Se o próximo estiver além do limite, reinicie a partir do início
+            Se a porta P1 da posição próxima for nula, incremente o contador de espaço em um
+            Senão, redefina o contador de espaço para zero
+            Atualize a posição próxima
+            Se o contador de espaço atingir o tamanho desejado
+                Aumente o contador de espaço usado pelo tamanho
+                Retorne a posição anterior da próxima disponível como um valor
+```
+
+Essa função é usada para alocar espaço no array de dados na estrutura `Heap`. Ela verifica se o heap não está cheio e se há espaço contíguo disponível para alocar a quantidade especificada de dados. Se o heap estiver cheio ou não houver espaço contíguo disponível, ele realiza uma pesquisa para encontrar espaço livre no heap e, em seguida, aloca e retorna o índice apropriado. O contador "used" é aumentado para rastrear as posições alocadas.
+
+<details>
+  <summary>Fluxograma</summary>
 
 ```plaintext
 Início
@@ -81,29 +106,7 @@ Se o heap não estiver cheio e "next + size" for menor ou igual ao tamanho do ar
 Fim
 ```
 
-**Pseudocódigo**:
-
-```plaintext
-Função alloc(size):
-    Se o tamanho for igual a zero
-        Retorne 0
-    Senão, se o espaço não estiver cheio e houver espaço suficiente após o próximo
-        Aumente o contador de espaço usado pelo tamanho
-        Atualize a próxima posição disponível
-        Retorne a posição anterior da próxima disponível como um valor
-    Senão
-        Defina o espaço como cheio
-        Enquanto houver um espaço contíguo de tamanho disponível
-            Se o próximo estiver além do limite, reinicie a partir do início
-            Se a porta P1 da posição próxima for nula, incremente o contador de espaço em um
-            Senão, redefina o contador de espaço para zero
-            Atualize a posição próxima
-            Se o contador de espaço atingir o tamanho desejado
-                Aumente o contador de espaço usado pelo tamanho
-                Retorne a posição anterior da próxima disponível como um valor
-```
-
-Essa função é usada para alocar espaço no array de dados na estrutura `Heap`. Ela verifica se o heap não está cheio e se há espaço contíguo disponível para alocar a quantidade especificada de dados. Se o heap estiver cheio ou não houver espaço contíguo disponível, ele realiza uma pesquisa para encontrar espaço livre no heap e, em seguida, aloca e retorna o índice apropriado. O contador "used" é aumentado para rastrear as posições alocadas.
+</details>
 
 ### Função `compact` da Estrutura `Heap`
 
