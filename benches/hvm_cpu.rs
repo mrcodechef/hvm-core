@@ -14,7 +14,7 @@ fn load_from_core(file: &str, size: usize, replace: Option<(&str, &str)>) -> (ru
   (book, net)
 }
 
-// Loads file and generate net from hvm-lang syntax
+/* // Loads file and generate net from hvm-lang syntax
 fn load_from_lang(file: &str, size: usize, replace: Option<(&str, &str)>) -> (run::Book, run::Net) {
   let prelude = fs::read_to_string("./benches/programs/prelude.hvm").unwrap();
   let code = prelude + "\n" + &fs::read_to_string(file).unwrap();
@@ -28,9 +28,9 @@ fn load_from_lang(file: &str, size: usize, replace: Option<(&str, &str)>) -> (ru
   let mut net = run::Net::new(size);
   net.boot(main.to_internal());
   (book, net)
-}
+} */
 
-fn church_benchmark(c: &mut Criterion) {
+/* fn church_benchmark(c: &mut Criterion) {
   let mut group = c.benchmark_group("church");
   for n in [20] {
     group.throughput(criterion::Throughput::Elements(n));
@@ -45,7 +45,7 @@ fn church_benchmark(c: &mut Criterion) {
       b.iter_batched(|| net.clone(), |mut net| black_box(net.normal(&book)), criterion::BatchSize::SmallInput);
     });
   }
-}
+} */
 
 fn tree_benchmark(c: &mut Criterion) {
   let mut group = c.benchmark_group("tree");
@@ -76,13 +76,13 @@ fn binary_counter_benchmark(c: &mut Criterion) {
   }
 }
 
-fn fusion_benchmark(c: &mut Criterion) {
+/* fn fusion_benchmark(c: &mut Criterion) {
   let mut group = c.benchmark_group("fusion");
   let (book, net) = load_from_lang("./benches/programs/neg_fusion.hvm", 1 << 8, None);
   group.bench_function(criterion::BenchmarkId::new("neg", "256"), |b| {
     b.iter_batched(|| net.clone(), |mut net| black_box(net.normal(&book)), criterion::BatchSize::SmallInput);
   });
-}
+} */
 
 fn interact_benchmark(c: &mut Criterion) {
   use ast::Tree::*;
@@ -117,10 +117,10 @@ criterion_group! {
     .measurement_time(Duration::from_millis(1000))
     .warm_up_time(Duration::from_millis(500));
   targets =
-    church_benchmark,
+    /* church_benchmark, */
     tree_benchmark,
     binary_counter_benchmark,
-    fusion_benchmark,
+    /* fusion_benchmark, */
     interact_benchmark,
 }
 criterion_main!(benches);

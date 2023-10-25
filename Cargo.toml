@@ -22,7 +22,7 @@ cudarc = { version = "0.9.14", optional = true }
 
 [dev-dependencies]
 criterion = "0.5.1"
-hvm-lang = { git = "https://github.com/HigherOrderCO/hvm-lang.git" } # allows us to use the hvm-lang syntax for tests/benchmarks
+#hvm-lang = { git = "https://github.com/HigherOrderCO/hvm-lang.git" } # allows us to use the hvm-lang syntax for tests/benchmarks
 
 [patch."https://github.com/HigherOrderCO/hvm-core.git"]
 hvm-core = { path = "." }
