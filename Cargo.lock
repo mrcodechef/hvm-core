@@ -152,6 +152,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
+name = "boxcar"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ba452c13b606aecb546d1dbc0b256368e4187eb5740f08208f421d76f50825b"
+
+[[package]]
 name = "bumpalo"
 version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -442,10 +448,12 @@ checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 name = "hvm-core"
 version = "0.1.11"
 dependencies = [
+ "boxcar",
  "criterion",
  "cudarc",
  "hvm-lang",
  "insta",
+ "rayon",
 ]
 
 [[package]]

@@ -13,6 +13,7 @@ use std::fs;
 
 // TODO: Proper error handling in `main` function
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // let args: Vec<String> = vec!["".to_string(), "run".to_string(), "./examples/era_era.hvmc".to_string(), "-s".to_string()];// env::args().collect();
   let args: Vec<String> = env::args().collect();
 
   if args.len() < 3 {

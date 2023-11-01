@@ -23,78 +23,89 @@ fn test_add() {
 #[test]
 fn test_sub() {
   let net = op_net(10, run::SUB, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#8");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_mul() {
   let net = op_net(10, run::MUL, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#20");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_div() {
   let net = op_net(10, run::DIV, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#5");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_mod() {
   let net = op_net(10, run::MOD, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#0");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_eq() {
   let net = op_net(10, run::EQ, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#0");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_ne() {
   let net = op_net(10, run::NE, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#1");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_lt() {
   let net = op_net(10, run::LT, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#0");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_gt() {
   let net = op_net(10, run::GT, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#1");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_and() {
   let net = op_net(10, run::AND, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#2");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_or() {
   let net = op_net(10, run::OR, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#10");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_xor() {
   let net = op_net(10, run::XOR, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#8");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
@@ -108,15 +119,17 @@ fn test_not() {
 #[test]
 fn test_lsh() {
   let net = op_net(10, run::LSH, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#40");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]
 fn test_rsh() {
   let net = op_net(10, run::RSH, 2);
-  let (_, net) = normal(net, 16);
+  let (rnet, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"#2");
+  assert_debug_snapshot!(rnet.rewrites(), @"5");
 }
 
 #[test]

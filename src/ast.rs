@@ -393,7 +393,7 @@ pub fn tree_to_runtime_go(rt_net: &mut run::Net, tree: &Tree, vars: &mut HashMap
       run::ERAS
     }
     Tree::Ctr { lab, lft, rgt } => {
-      let val = rt_net.heap.alloc(1);
+      let val = rt_net.heap.alloc();
       let p1 = tree_to_runtime_go(rt_net, &*lft, vars, Parent::Node { val, port: run::P1 });
       rt_net.heap.set(val, run::P1, p1);
       let p2 = tree_to_runtime_go(rt_net, &*rgt, vars, Parent::Node { val, port: run::P2 });
@@ -430,7 +430,7 @@ pub fn tree_to_runtime_go(rt_net: &mut run::Net, tree: &Tree, vars: &mut HashMap
       run::Ptr::new(run::NUM, *val as run::Val)
     }
     Tree::Op2 { lft, rgt } => {
-      let val = rt_net.heap.alloc(1);
+      let val = rt_net.heap.alloc();
       let p1 = tree_to_runtime_go(rt_net, &*lft, vars, Parent::Node { val, port: run::P1 });
       rt_net.heap.set(val, run::P1, p1);
       let p2 = tree_to_runtime_go(rt_net, &*rgt, vars, Parent::Node { val, port: run::P2 });
@@ -438,7 +438,7 @@ pub fn tree_to_runtime_go(rt_net: &mut run::Net, tree: &Tree, vars: &mut HashMap
       run::Ptr::new(run::OP2, val)
     }
     Tree::Mat { sel, ret } => {
-      let val = rt_net.heap.alloc(1);
+      let val = rt_net.heap.alloc();
       let p1 = tree_to_runtime_go(rt_net, &*sel, vars, Parent::Node { val, port: run::P1 });
       rt_net.heap.set(val, run::P1, p1);
       let p2 = tree_to_runtime_go(rt_net, &*ret, vars, Parent::Node { val, port: run::P2 });
@@ -459,7 +459,7 @@ pub fn net_to_runtime(rt_net: &mut run::Net, net: &Net) {
   for (tree1, tree2) in &net.rdex {
     let ptr1 = tree_to_runtime_go(rt_net, tree1, &mut vars, Parent::Redex);
     let ptr2 = tree_to_runtime_go(rt_net, tree2, &mut vars, Parent::Redex);
-    rt_net.rdex.push((ptr1, ptr2));
+    rt_net.put_redex((ptr1, ptr2));
   }
 }
 
@@ -536,10 +536,10 @@ pub fn net_from_runtime(rt_net: &run::Net) -> Net {
   let mut vars = HashMap::new();
   let mut fresh = 0;
   let mut rdex = Vec::new();
-  let root = tree_from_runtime_go(rt_net, rt_net.heap.get_root(), PARENT_ROOT, &mut vars, &mut fresh);
-  for &(a, b) in &rt_net.rdex {
-    let tree_a = tree_from_runtime_go(rt_net, a, Parent::Redex, &mut vars, &mut fresh);
-    let tree_b = tree_from_runtime_go(rt_net, b, Parent::Redex, &mut vars, &mut fresh);
+  let root = tree_from_runtime_go(&rt_net, rt_net.heap.get_root(), PARENT_ROOT, &mut vars, &mut fresh);
+  for (a, b) in rt_net.peek_current_redexes() {
+    let tree_a = tree_from_runtime_go(&rt_net, a, Parent::Redex, &mut vars, &mut fresh);
+    let tree_b = tree_from_runtime_go(&rt_net, b, Parent::Redex, &mut vars, &mut fresh);
     rdex.push((tree_a, tree_b));
   }
   Net { root, rdex }

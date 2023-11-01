@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
+#![feature(extend_one)]
 
 pub mod ast;
 #[cfg(feature = "cuda")]

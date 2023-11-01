@@ -7,11 +7,13 @@
 // they interact with nodes, and are cleared when they interact with ERAs, allowing for constant
 // space evaluation of recursive functions on Scott encoded datatypes.
 
+use std::sync::mpsc::{Sender, Receiver, channel};
+
 pub type Val = u32;
 
 // Core terms.
 #[repr(u8)]
-#[derive(Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum Tag {
   /// Variable to aux port 1
   VR1,
@@ -81,7 +83,7 @@ pub const P2: Port = 1;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Ptr(pub Val);
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Heap {
   data: Vec<(Ptr, Ptr)>,
   next: usize,
@@ -89,10 +91,16 @@ pub struct Heap {
   full: bool,
 }
 
+type Redex = (Ptr, Ptr);
+
 // A interaction combinator net.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Debug)]
 pub struct Net {
-  pub rdex: Vec<(Ptr,Ptr)>, // redexes
+  // redexes
+  tx_redex: Sender<Redex>,
+  rx_redex: Receiver<Redex>,
+  redexes: Vec<Redex>,
+
   pub heap: Heap, // nodes
   pub anni: usize, // anni rewrites
   pub comm: usize, // comm rewrites
@@ -104,7 +112,7 @@ pub struct Net {
 // A compact closed net, used for dereferences.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub struct Def {
-  pub rdex: Vec<(Ptr, Ptr)>,
+  pub rdex: Vec<Redex>,
   pub node: Vec<(Ptr, Ptr)>,
 }
 
@@ -215,13 +223,9 @@ impl Ptr {
   }
 
   #[inline(always)]
+  /// All Ptrs that don't point to somewhere
   pub fn has_loc(&self) -> bool {
     matches!(self.tag(), VAR!() | OP2 | OP1 | MAT | CTR!())
-  }
-
-  #[inline(always)]
-  pub fn adjust(&self, loc: Val) -> Ptr {
-    Ptr::new(self.tag(), self.val() + if self.has_loc() { loc - 1 } else { 0 })
   }
 
   // Can this redex be skipped (as an optimization)?
@@ -252,42 +256,22 @@ impl Book {
 
 impl Heap {
   pub fn new(size: usize) -> Heap {
-    return Heap {
+    Heap {
       data: vec![(NULL, NULL); size],
-      next: 1,
+      next: 0,
       used: 0,
       full: false,
-    };
+    }
   }
 
   #[inline(always)]
-  pub fn alloc(&mut self, size: usize) -> Val {
-    if size == 0 {
-      return 0;
-    } else if !self.full && self.next + size <= self.data.len() {
-      self.used += size;
-      self.next += size;
-      return (self.next - size) as Val;
-    } else {
-      self.full = true;
-      let mut space = 0;
-      loop {
-        if self.next >= self.data.len() {
-          space = 0;
-          self.next = 1;
-        }
-        if self.get(self.next as Val, P1).is_nil() {
-          space += 1;
-        } else {
-          space = 0;
-        }
-        self.next += 1;
-        if space == size {
-          self.used += size;
-          return (self.next - space) as Val;
-        }
-      }
+  pub fn alloc(&mut self) -> Val {
+    self.next = (self.next + 1) % self.data.len();
+    while !self.get(self.next as Val, P1).is_nil() {
+      self.next = (self.next + 1) % self.data.len();
     }
+    self.used += 1;
+    self.next as Val
   }
 
   #[inline(always)]
@@ -295,16 +279,6 @@ impl Heap {
     self.used -= 1;
     self.set(index, P1, NULL);
     self.set(index, P2, NULL);
-  }
-
-  #[inline(always)]
-  pub fn lock(&self, index: Val) {
-    return;
-  }
-
-  #[inline(always)]
-  pub fn unlock(&self, index: Val) {
-    return;
   }
 
   #[inline(always)]
@@ -355,13 +329,24 @@ impl Heap {
     }
     return node;
   }
+
+  fn extend_one(&mut self, p1: Ptr, p2: Ptr) -> Val {
+    // TODO: maybe do both lines atomically?
+    let index = self.data.len() as Val;
+    self.data.push((p1, p2));
+    index
+  }
 }
+
 
 impl Net {
   // Creates an empty net with given size.
   pub fn new(size: usize) -> Self {
+    let (tx_redex, rx_redex) = channel();
     Net {
-      rdex: vec![],
+      tx_redex,
+      rx_redex,
+      redexes: vec![],
       heap: Heap::new(size),
       anni: 0,
       comm: 0,
@@ -378,7 +363,7 @@ impl Net {
 
   // Converts to a def.
   pub fn to_def(self) -> Def {
-    Def { rdex: self.rdex, node: self.heap.compact() }
+    Def { rdex: self.peek_current_redexes(), node: self.heap.compact() }
   }
 
   // Reads back from a def.
@@ -388,7 +373,9 @@ impl Net {
       net.heap.set(i as Val, P1, p1);
       net.heap.set(i as Val, P2, p2);
     }
-    net.rdex = def.rdex;
+    for r in def.rdex {
+      net.put_redex(r);
+    }
     net
   }
 
@@ -411,7 +398,7 @@ impl Net {
       if Ptr::can_skip(a, b) {
         self.eras += 1;
       } else {
-        self.rdex.push((a, b));
+        self.put_redex((a, b));
       }
       return;
     }
@@ -505,35 +492,35 @@ impl Net {
 
   pub fn comm(&mut self, a: Ptr, b: Ptr) {
     self.comm += 1;
-    let loc = self.heap.alloc(4);
-    self.link(self.heap.get(a.val(), P1), Ptr::new(b.tag(), loc + 0));
-    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc + 2));
-    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc + 1));
-    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc + 3));
-    self.heap.set(loc + 0, P1, Ptr::new(VR1, loc + 2));
-    self.heap.set(loc + 0, P2, Ptr::new(VR1, loc + 3));
-    self.heap.set(loc + 1, P1, Ptr::new(VR2, loc + 2));
-    self.heap.set(loc + 1, P2, Ptr::new(VR2, loc + 3));
-    self.heap.set(loc + 2, P1, Ptr::new(VR1, loc + 0));
-    self.heap.set(loc + 2, P2, Ptr::new(VR1, loc + 1));
-    self.heap.set(loc + 3, P1, Ptr::new(VR2, loc + 0));
-    self.heap.set(loc + 3, P2, Ptr::new(VR2, loc + 1));
+    let (loc1, loc2, loc3, loc4) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
+    self.link(self.heap.get(a.val(), P1), Ptr::new(b.tag(), loc1));
+    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc3));
+    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc2));
+    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc4));
+    self.heap.set(loc1, P1, Ptr::new(VR1, loc3));
+    self.heap.set(loc1, P2, Ptr::new(VR1, loc4));
+    self.heap.set(loc2, P1, Ptr::new(VR2, loc3));
+    self.heap.set(loc2, P2, Ptr::new(VR2, loc4));
+    self.heap.set(loc3, P1, Ptr::new(VR1, loc1));
+    self.heap.set(loc3, P2, Ptr::new(VR1, loc2));
+    self.heap.set(loc4, P1, Ptr::new(VR2, loc1));
+    self.heap.set(loc4, P2, Ptr::new(VR2, loc2));
     self.heap.free(a.val());
     self.heap.free(b.val());
   }
 
   pub fn pass(&mut self, a: Ptr, b: Ptr) {
     self.comm += 1;
-    let loc = self.heap.alloc(3);
-    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc+0));
-    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc+1));
-    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc+2));
-    self.heap.set(loc + 0, P1, Ptr::new(VR2, loc+1));
-    self.heap.set(loc + 0, P2, Ptr::new(VR2, loc+2));
-    self.heap.set(loc + 1, P1, self.heap.get(a.val(), P1));
-    self.heap.set(loc + 1, P2, Ptr::new(VR1, loc+0));
-    self.heap.set(loc + 2, P1, self.heap.get(a.val(), P1));
-    self.heap.set(loc + 2, P2, Ptr::new(VR2, loc+0));
+    let (loc1, loc2, loc3) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
+    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc1));
+    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc2));
+    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc3));
+    self.heap.set(loc1, P1, Ptr::new(VR2, loc2));
+    self.heap.set(loc1, P2, Ptr::new(VR2, loc3));
+    self.heap.set(loc2, P1, self.heap.get(a.val(), P1));
+    self.heap.set(loc2, P2, Ptr::new(VR1, loc1));
+    self.heap.set(loc3, P1, self.heap.get(a.val(), P1));
+    self.heap.set(loc3, P2, Ptr::new(VR2, loc1));
     self.heap.free(a.val());
     self.heap.free(b.val());
   }
@@ -638,18 +625,18 @@ impl Net {
     let p1 = self.heap.get(a.val(), P1); // branch
     let p2 = self.heap.get(a.val(), P2); // return
     if b.val() == 0 {
-      let loc = self.heap.alloc(1);
-      self.heap.set(loc+0, P2, ERAS);
-      self.link(p1, Ptr::new(CT0, loc+0));
-      self.link(p2, Ptr::new(VR1, loc+0));
+      let loc = self.heap.alloc();
+      self.heap.set(loc, P2, ERAS);
+      self.link(p1, Ptr::new(CT0, loc));
+      self.link(p2, Ptr::new(VR1, loc));
       self.heap.free(a.val());
     } else {
-      let loc = self.heap.alloc(2);
-      self.heap.set(loc+0, P1, ERAS);
-      self.heap.set(loc+0, P2, Ptr::new(CT0, loc + 1));
-      self.heap.set(loc+1, P1, Ptr::new(NUM, b.val() - 1));
-      self.link(p1, Ptr::new(CT0, loc+0));
-      self.link(p2, Ptr::new(VR2, loc+1));
+      let (loc1, loc2) = (self.heap.alloc(), self.heap.alloc());
+      self.heap.set(loc1, P1, ERAS);
+      self.heap.set(loc1, P2, Ptr::new(CT0, loc2));
+      self.heap.set(loc2, P1, Ptr::new(NUM, b.val() - 1));
+      self.link(p1, Ptr::new(CT0, loc1));
+      self.link(p2, Ptr::new(VR2, loc2));
       self.heap.free(a.val());
     }
   }
@@ -662,31 +649,40 @@ impl Net {
     // FIXME: change "while" to "if" once lang prevents refs from returning refs
     while ptr.is_ref() {
       // Load the closed net.
-      let got = unsafe { book.defs.get_unchecked((ptr.val() as usize) & 0xFFFFFF) };
-      if got.node.len() > 0 {
-        let len = got.node.len() - 1;
-        let loc = self.heap.alloc(len);
-        // Load nodes, adjusted.
-        for i in 0..len as Val {
-          unsafe {
-            let p1 = got.node.get_unchecked(1 + i as usize).0.adjust(loc);
-            let p2 = got.node.get_unchecked(1 + i as usize).1.adjust(loc);
-            self.heap.set(loc + i, P1, p1);
-            self.heap.set(loc + i, P2, p2);
-          }
+      let mut def_net = unsafe { book.defs.get_unchecked((ptr.val() as usize) & 0xFFFFFF) }.clone();
+      if def_net.node.len() == 0 {
+        continue;
+      }
+
+      // TODO: Reuse Vec between calls (thread-local memory)
+      let mut locs = vec![parent.val()];
+      locs.extend(
+        def_net.node.iter()
+          .skip(1) // skip root
+          .map(|_| self.heap.alloc())
+      );
+
+      let adjust_ptr = |ptr: &mut Ptr| {
+        if ptr.has_loc() {
+          *ptr = Ptr::new(ptr.tag(), locs[ptr.val() as usize]);
         }
-        // Load redexes, adjusted.
-        for r in &got.rdex {
-          let p1 = r.0.adjust(loc);
-          let p2 = r.1.adjust(loc);
-          self.rdex.push((p1, p2));
-        }
-        // Load root, adjusted.
-        ptr = got.node[0].1.adjust(loc);
-        // Link root.
-        if ptr.is_var() {
-          self.set_target(ptr, parent);
-        }
+      };
+
+      // Adjust all nodes
+      (_, ptr) = def_net.node[0];
+      adjust_ptr(&mut ptr);
+      for (p1, p2) in &mut def_net.node[1..] {
+        adjust_ptr(p1);
+        adjust_ptr(p2);
+      }
+
+      // Load nodes and redexes
+      for (loc, (p1, p2)) in locs.into_iter().skip(1).zip(&def_net.node[1..]) {
+        self.heap.set(loc, P1, *p1);
+        self.heap.set(loc, P2, *p2);
+      }
+      for (a, b) in &def_net.rdex {
+        self.put_redex((*a, *b));
       }
     }
     return ptr;
@@ -694,21 +690,22 @@ impl Net {
 
   // Reduces all redexes.
   pub fn reduce(&mut self, book: &Book) {
-    let mut rdex: Vec<(Ptr, Ptr)> = vec![];
-    std::mem::swap(&mut self.rdex, &mut rdex);
-    while rdex.len() > 0 {
-      for (a, b) in &rdex {
-        self.interact(book, *a, *b);
-      }
-      rdex.clear();
-      std::mem::swap(&mut self.rdex, &mut rdex);
+    // let mut redex_snapshot = std::mem::take(&mut self.redexes);
+    // while redex_snapshot.len() > 0 {
+    //   for (a, b) in redex_snapshot.drain(..) {
+    //     self.interact(book, a, b);
+    //   }
+    //   std::mem::swap(&mut self.redexes, &mut redex_snapshot);
+    // }
+    while let Some((a, b)) = self.get_next_redex() {
+      self.interact(book, a, b);
     }
   }
 
   // Reduce a net to normal form.
   pub fn normal(&mut self, book: &Book) {
     self.expand(book, ROOT);
-    while self.rdex.len() > 0 {
+    while self.has_redex() {
       self.reduce(book);
       self.expand(book, ROOT);
     }
@@ -729,5 +726,28 @@ impl Net {
   // Total rewrite count.
   pub fn rewrites(&self) -> usize {
     self.anni + self.comm + self.eras + self.dref + self.oper
+  }
+
+  fn has_redex(&self) -> bool {
+    self.redexes.len() > 0
+  }
+
+  pub(crate) fn get_next_redex(&mut self) -> Option<Redex> {
+    // self.rx_redex.recv().ok()
+    self.redexes.pop()
+  }
+
+  pub(crate) fn peek_current_redexes(&self) -> Vec<Redex> {
+    // let redexes: Vec<_> = self.rx_redex.try_iter().collect();
+    // for r in redexes.clone() {
+    //   self.tx_redex.send(r).unwrap();
+    // }
+    // redexes
+    self.redexes.clone()
+  }
+
+  pub(crate) fn put_redex(&mut self, r: Redex) {
+    // self.tx_redex.send(r).unwrap();
+    self.redexes.push(r);
   }
 }

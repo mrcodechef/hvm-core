@@ -16,7 +16,9 @@ path = "src/lib.rs"
 bench = false
 
 [dependencies]
+boxcar = "0.2.3"
 cudarc = { version = "0.9.14", optional = true }
+rayon = "1.8.0"
 
 # Benchmark dependencies
 
