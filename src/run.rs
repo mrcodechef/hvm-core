@@ -23,9 +23,9 @@ pub enum Tag {
   ERA,
   /// Unboxed number
   NUM,
-  /// Binary numeric operation
+  /// First node of numeric operation
   OP2,
-  /// Unary numeric operation
+  /// Second node of numeric operation
   OP1,
   /// Numeric if-then-else(MATCH)
   MAT,
@@ -46,7 +46,6 @@ pub enum Tag {
 pub type NumericOp = u8;
 
 // Numeric operations.
-pub const USE: NumericOp = 0x0; // set-next-op
 pub const ADD: NumericOp = 0x1; // addition
 pub const SUB: NumericOp = 0x2; // subtraction
 pub const MUL: NumericOp = 0x3; // multiplication
@@ -445,8 +444,8 @@ impl Net {
       (REF, ERA)       => self.eras += 1,
       (ERA, REF)       => self.eras += 1,
       (ERA, ERA)       => self.eras += 1,
-      (VAR, _)      => self.link(a, b),
-      (_, VAR)      => self.link(b, a),
+      (VAR, _)         => self.link(a, b),
+      (_, VAR)         => self.link(b, a),
       (CTR!(), NUM)    => self.copy(a, b),
       (NUM, CTR!())    => self.copy(b, a),
       (NUM, ERA)       => self.eras += 1,
@@ -456,6 +455,8 @@ impl Net {
       (NUM, OP2)       => self.op2n(b, a),
       (OP1, NUM)       => self.op1n(a, b),
       (NUM, OP1)       => self.op1n(b, a),
+      (OP2, OP1)       => self.opfn(a, b),
+      (OP1, OP2)       => self.opfn(b, a),
       (OP2, CTR!())    => self.comm(a, b),
       (CTR!(), OP2)    => self.comm(b, a),
       (OP1, CTR!())    => self.pass(a, b),
@@ -477,7 +478,7 @@ impl Net {
       (_, REF) => unreachable!(),
 
       // undefined numerical interactions resulting from a sort of "type error"
-      (OPS!(), OPS!()) => unreachable!(),
+      (OPS!(), _) => unreachable!(),
 
       // TODO: this will change when we implement the multi-threaded version
       (RDR, _) => unreachable!(),
@@ -559,59 +560,72 @@ impl Net {
 
 
   pub fn op2n(&mut self, a: Ptr, b: Ptr) {
+    // Converts `a` from an OP2 into an OP1, storing `b` in port 1.
     self.oper += 1;
-    let mut p1 = self.heap.get(a.val() + P1);
-    // Optimization: perform chained ops at once
+    let p1 = self.heap.get(a.val() + P1);
+    // Optimization: try to do all steps of calling numeric function at once
     if p1.is_num() {
-      let mut rt = b.val();
-      let mut p2 = self.heap.get(a.val() + P2);
-      loop {
+      self.oper += 1;
+      let p2 = self.heap.get(a.val() + P2);
+      if p2.is_op1() {
+        // Do all the 3 steps of the operation
         self.oper += 1;
-        rt = self.prim(rt, p1.val());
-        // If P2 is OP2, keep looping
-        if p2.is_op2() {
-          p1 = self.heap.get(p2.val() + P1);
-          if p1.is_num() {
-            p2 = self.heap.get(p2.val() + P2);
-            self.oper += 1; // since OP1 is skipped
-            continue;
-          }
-        }
-        // If P2 is OP1, flip args and keep looping
-        if p2.is_op1() {
-          let tmp = rt;
-          rt = self.heap.get(p2.val() + P1).val();
-          p1 = Ptr::new(NUM, tmp);
-          p2 = self.heap.get(p2.val() + P2);
-          continue;
-        }
-        break;
+        let f = self.heap.get(p2.val() + P1);
+        let res = self.prim(f.val(), b.val(), p1.val());
+        self.link(self.heap.get(p2.val() + P2), Ptr::new(NUM, res));
+        self.heap.free(a.val());
+        self.heap.free(p2.val());
+      } else {
+         // Do just the first 2 steps
+         self.heap.set(a.val() + P1, b);
+         self.heap.set(a.val() + P2, p1);
+         self.link(Ptr::new(OP2, a.val()), p2);
       }
-      self.link(Ptr::new(NUM, rt), p2);
-      return;
+    } else {
+      // Only do the first step, the actual reduction of OP2 ~ NUM
+      self.link(Ptr::new(OP1, a.val()), p1);
+      self.heap.set(a.val() + P1, b);
     }
-    self.heap.set(a.val() + P1, b);
-    self.link(Ptr::new(OP1, a.val()), p1);
   }
 
   pub fn op1n(&mut self, a: Ptr, b: Ptr) {
+    // Converts `a` from OP1 into OP2, storing NUM `b` in port 2.
     self.oper += 1;
     let p1 = self.heap.get(a.val() + P1);
     let p2 = self.heap.get(a.val() + P2);
-    let v0 = p1.val() as u32;
-    let v1 = b.val() as u32;
-    let v2 = self.prim(v0, v1);
-    self.link(Ptr::new(NUM, v2), p2);
-    self.heap.free(a.val());
+    // Optimization: Try to complete the whole numeric operation
+    if p2.is_op1() {
+      // Do the remaining step as well
+      self.oper += 1;
+      let f = self.heap.get(p2.val() + P1);
+      let res = self.prim(f.val(), p1.val(), b.val());
+      self.link(self.heap.get(p2.val() + P2), Ptr::new(NUM, res));
+      self.heap.free(a.val());
+      self.heap.free(p2.val());
+    } else {
+       // Do just the OP1 ~ NUM reduction
+       self.heap.set(a.val() + P2, b);
+       self.link(Ptr::new(OP2, a.val()), p2);
+    }
   }
 
-  pub fn prim(&mut self, a: u32, b: u32) -> u32 {
-    let a_opr = (a >> 24) & 0xF;
-    let b_opr = (b >> 24) & 0xF; // not used yet
+  pub fn opfn(&mut self, a: Ptr, b: Ptr) {
+    // Executes a binary numeric function.
+    // `a` is an OP2 holding the 2 args, `b` is an OP1 with the function in port 1.
+    self.oper += 1;
+    let v1 = self.heap.get(a.val() + P1).val();
+    let v2 = self.heap.get(a.val() + P2).val();
+    let f = self.heap.get(b.val() + P1).val();
+    let res = self.prim(f, v1, v2);
+    self.link(self.heap.get(b.val() + P2), Ptr::new(NUM, res));
+    self.heap.free(a.val());
+    self.heap.free(b.val());
+  }
+
+  pub fn prim(&mut self, f: Val, a: Val, b: Val) -> Val {
     let a_val = a & 0xFFFFFF;
     let b_val = b & 0xFFFFFF;
-    match a_opr as NumericOp {
-      USE => { ((a_val & 0xF) << 24) | b_val }
+    match f as u8 {
       ADD => { (a_val.wrapping_add(b_val)) & 0xFFFFFF }
       SUB => { (a_val.wrapping_sub(b_val)) & 0xFFFFFF }
       MUL => { (a_val.wrapping_mul(b_val)) & 0xFFFFFF }
