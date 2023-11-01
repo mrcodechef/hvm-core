@@ -480,8 +480,8 @@ impl Net {
       (OPS!(), OPS!()) => unreachable!(),
 
       // TODO: this will change when we implement the multi-threaded version
-      (RED, _) => unreachable!(),
-      (_, RED) => unreachable!(),
+      (RDR, _) => unreachable!(),
+      (_, RDR) => unreachable!(),
     };
   }
 
