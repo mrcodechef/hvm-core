@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use hvm_lang::term::{parser, DefNames, DefinitionBook, Term};
-use hvmc::{ast::*, run};
+use hvmc::{run, ast};
 use std::fs;
 
 pub fn load_file(file: &str) -> String {
@@ -9,9 +9,13 @@ pub fn load_file(file: &str) -> String {
   fs::read_to_string(path).unwrap()
 }
 
-// Parses code and generate Book from hvm-core syntax
-pub fn parse_core(code: &str) -> Book {
-  do_parse_book(code)
+// Parses code and generate a Net from hvm-core syntax
+pub fn parse_core(code: &str, size: usize) -> (run::Book, run::Net) {
+  let book = ast::do_parse_book(code);
+  let book = ast::book_to_runtime(&book);
+  let mut rnet = run::Net::new(size);
+  rnet.boot(ast::name_to_val("main"));
+  (book, rnet)
 }
 
 // Parses code and generate DefinitionBook from hvm-lang syntax
@@ -33,16 +37,14 @@ pub fn replace_template(mut code: String, map: &[(&str, &str)]) -> String {
   code
 }
 
-pub fn normal(book: Book, size: usize) -> (run::Net, Net) {
-  let book = book_to_runtime(&book);
+pub fn hvm_lang_normal(book: DefinitionBook, size: usize) -> (String, run::Net) {
+  let (term, defs, info) = hvm_lang::run_book(book, size).unwrap();
+  let term = term.to_string(&defs);
   let mut rnet = run::Net::new(size);
-  rnet.boot(name_to_val("main"));
-  rnet.normal(&book);
-
-  let net = net_from_runtime(&rnet);
-  (rnet, net)
+  ast::net_to_runtime(&mut rnet, &info.net);
+  (term, rnet)
 }
 
-pub fn hvm_lang_normal(book: DefinitionBook, size: usize) -> (Term, DefNames, hvm_lang::RunInfo) {
-  hvm_lang::run_book(book, size).unwrap()
+pub fn show_net(net: &run::Net) -> String {
+  ast::show_net(&ast::net_from_runtime(net))
 }

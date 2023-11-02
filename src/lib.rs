@@ -1,9 +1,10 @@
+#![feature(stmt_expr_attributes)]
+#![feature(half_open_range_patterns_in_slices)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
-#![feature(extend_one)]
 
 pub mod ast;
 #[cfg(feature = "cuda")]

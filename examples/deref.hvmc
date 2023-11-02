@@ -1,0 +1,22 @@
+// @b = R
+//   & (* R) ~ *
+//
+// @main = R
+//   & [a a] ~ (R @b)
+// RWTS   : 5
+// - ANNI : 1
+// - COMM : 1
+// - ERAS : 1
+// - DREF : 2
+// - OPER : 0
+
+@main = R
+  & [a a] ~ (R R_b)
+  & (* R_b) ~ *
+
+// RWTS   : 7
+// - ANNI : 1
+// - COMM : 1
+// - ERAS : 4
+// - DREF : 1
+// - OPER : 0

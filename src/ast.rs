@@ -239,7 +239,7 @@ pub fn show_tree(tree: &Tree) -> String {
         0 => { format!("({} {})", show_tree(&*lft), show_tree(&*rgt)) }
         1 => { format!("[{} {}]", show_tree(&*lft), show_tree(&*rgt)) }
         _ => { format!("{{{} {} {}}}", lab, show_tree(&*lft), show_tree(&*rgt)) }
-      } 
+      }
     }
     Tree::Var { nam } => {
       nam.clone()
@@ -467,7 +467,7 @@ pub fn book_to_runtime(book: &Book) -> run::Book {
   let mut rt_book = run::Book::new();
   for (name, net) in book {
     let id = name_to_val(name);
-    let mut rt = run::Net::new(1 << 16);
+    let mut rt = run::Net::new(64);
     net_to_runtime(&mut rt, net);
     rt_book.def(id, rt.to_def());
   }

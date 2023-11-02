@@ -645,14 +645,15 @@ impl Net {
   #[inline(always)]
   pub fn deref(&mut self, book: &Book, ptr: Ptr, parent: Ptr) -> Ptr {
     self.dref += 1;
-    let mut ptr = ptr;
+    let mut root = ptr;
     // FIXME: change "while" to "if" once lang prevents refs from returning refs
-    while ptr.is_ref() {
+    while root.is_ref() {
       // Load the closed net.
-      let mut def_net = unsafe { book.defs.get_unchecked((ptr.val() as usize) & 0xFFFFFF) }.clone();
+      let mut def_net = unsafe { book.defs.get_unchecked((root.val() as usize) & 0xFFFFFF) }.clone();
       if def_net.node.len() == 0 {
         continue;
       }
+
 
       // TODO: Reuse Vec between calls (thread-local memory)
       let mut locs = vec![parent.val()];
@@ -662,15 +663,16 @@ impl Net {
           .map(|_| self.heap.alloc())
       );
 
-      let adjust_ptr = |ptr: &mut Ptr| {
+      let adjust_ptr = #[inline(always)] |ptr: &mut Ptr| {
         if ptr.has_loc() {
           *ptr = Ptr::new(ptr.tag(), locs[ptr.val() as usize]);
         }
       };
 
+
       // Adjust all nodes
-      (_, ptr) = def_net.node[0];
-      adjust_ptr(&mut ptr);
+      (_, root) = def_net.node[0];
+      adjust_ptr(&mut root);
       for (p1, p2) in &mut def_net.node[1..] {
         adjust_ptr(p1);
         adjust_ptr(p2);
@@ -685,7 +687,7 @@ impl Net {
         self.put_redex((*a, *b));
       }
     }
-    return ptr;
+    return root;
   }
 
   // Reduces all redexes.
@@ -737,7 +739,7 @@ impl Net {
     self.redexes.pop()
   }
 
-  pub(crate) fn peek_current_redexes(&self) -> Vec<Redex> {
+  pub fn peek_current_redexes(&self) -> Vec<Redex> {
     // let redexes: Vec<_> = self.rx_redex.try_iter().collect();
     // for r in redexes.clone() {
     //   self.tx_redex.send(r).unwrap();
