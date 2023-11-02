@@ -41,6 +41,10 @@ pub enum Tag {
   CT4,
   /// Main port of con node(label 5)
   CT5,
+  /// Main port of con node(label 6)
+  CT6,
+  /// Main port of con node(label 7)
+  CT7,
 }
 
 pub type NumericOp = u32;
@@ -61,8 +65,6 @@ pub const XOR: NumericOp = 0xC; // logical-xor
 pub const NOT: NumericOp = 0xD; // logical-not
 pub const LSH: NumericOp = 0xE; // left-shift
 pub const RSH: NumericOp = 0xF; // right-shift
-pub const FIB: NumericOp = 0x10;
-pub const FIB2: NumericOp = 0x11;
 
 // Root address
 pub const ROOT_PORT: Val = 0 + P2;
@@ -115,7 +117,7 @@ pub struct Book {
 }
 
 // Patterns for easier matching on tags
-macro_rules! CTR{() => {CT0 | CT1 | CT2 | CT3 | CT4 | CT5}}
+macro_rules! CTR{() => {CT0 | CT1 | CT2 | CT3 | CT4 | CT5 | CT6 | CT7 }}
 macro_rules! OPS{() => {OP2 | OP1 | MAT}}
 macro_rules! PRI{() => {REF | ERA | NUM | OPS!() | CTR!()}}
 
@@ -648,66 +650,8 @@ impl Net {
       NOT => { Ptr::new(NUM, (!b) & 0xFFFFFF) }
       LSH => { Ptr::new(NUM, (a << b) & 0xFFFFFF) }
       RSH => { Ptr::new(NUM, (a >> b) & 0xFFFFFF) }
-      FIB => { self.fib(a) }
-      FIB2 => { self.fib2(a) }
       _   => { unreachable!() }
     }
-  }
-
-  fn fib(&mut self, a: Val) -> Ptr {
-    /*
-      let t = λa λb a
-      for _ in 0..n {
-        t = λa λb (t b (+ a b))
-      }
-      return t
-     */
-    // t = λa λb a
-    // in tree syntax:
-    //   (a (* a))
-    let loc = self.heap.alloc(2*2);
-    let mut t = Ptr::new(CT0, loc+0);
-    self.heap.set(loc+0+P1, Ptr::new(VAR, loc+2+P2));
-    self.heap.set(loc+0+P2, Ptr::new(CT0, loc+2));
-    self.heap.set(loc+2+P1, ERAS);
-    self.heap.set(loc+2+P2, Ptr::new(VAR, loc+0+P1));
-    for _ in 0..a {
-      // t = λa λb (t b (+ a b))
-      // in tree syntax:
-      //   (<a b> ({2 c a} d))
-      //   & t ~ (c (e d))
-      //   & #1 ~ <b e>
-      let loc = self.heap.alloc(7*2);
-      self.rdex.push((t, Ptr::new(CT0, loc+6)));
-      t = Ptr::new(CT0, loc+0);
-      // λa λb dup b1 b2 = b
-      self.heap.set(loc+0+P1, Ptr::new(OP2, loc+10));
-      self.heap.set(loc+0+P2, Ptr::new(CT0, loc+2));
-      self.heap.set(loc+2+P1, Ptr::new(CT2, loc+4));
-      self.heap.set(loc+2+P2, Ptr::new(VAR, loc+8+P2));
-      self.heap.set(loc+4+P1, Ptr::new(VAR, loc+6+P1));
-      self.heap.set(loc+4+P2, Ptr::new(VAR, loc+10+P1));
-      // (t b1 sum)
-      self.heap.set(loc+6+P1, Ptr::new(VAR, loc+4+P1));
-      self.heap.set(loc+6+P2, Ptr::new(CT0, loc+8));
-      self.heap.set(loc+8+P1, Ptr::new(VAR, loc+12+P2));
-      self.heap.set(loc+8+P2, Ptr::new(VAR, loc+2+P2));
-      // (+ a b2)
-      self.heap.set(loc+10+P1, Ptr::new(VAR, loc+4+P2));
-      self.heap.set(loc+10+P2, Ptr::new(OP1, loc+12)); // small optimization, prereduce second op2
-      self.heap.set(loc+12+P1, Ptr::new(NUM, ADD));
-      self.heap.set(loc+12+P2, Ptr::new(VAR, loc+8+P1));
-    }
-    t
-  }
-
-  fn fib2(&mut self, n: Val) -> Ptr {
-    let mut a = 0;
-    let mut b = 1;
-    for _ in 0..n {
-      (a, b) = (b, (a + b) & 0xFFFFFF);
-    }
-    Ptr::new(NUM, a)
   }
 
   pub fn mtch(&mut self, a: Ptr, b: Ptr) {
@@ -776,14 +720,6 @@ impl Net {
       }
       rdex.clear();
       std::mem::swap(&mut self.rdex, &mut rdex);
-    }
-  }
-
-  pub fn reduce2(&mut self, book: &Book) {
-    while !self.rdex.is_empty() {
-      let (a, b) = self.rdex.remove(0);
-      self.interact(book, a, b);
-      //eprintln!("{}\n", crate::ast::show_runtime_net(&self));
     }
   }
 
