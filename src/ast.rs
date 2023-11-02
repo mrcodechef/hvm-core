@@ -467,7 +467,7 @@ pub fn book_to_runtime(book: &Book) -> run::Book {
   let mut rt_book = run::Book::new();
   for (name, net) in book {
     let id = name_to_val(name);
-    let mut rt = run::Net::new(64);
+    let mut rt = run::Net::new(1 << 16);
     net_to_runtime(&mut rt, net);
     rt_book.def(id, rt.to_def());
   }
