@@ -356,6 +356,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1cfb3ea8a53f37c40dea2c7bedcbd88bdfae54f5e2175d6ecaff1c988353add"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,6 +460,7 @@ version = "0.1.11"
 dependencies = [
  "boxcar",
  "criterion",
+ "crossbeam-queue",
  "cudarc",
  "hvm-lang",
  "insta",
@@ -459,7 +470,6 @@ dependencies = [
 [[package]]
 name = "hvm-lang"
 version = "0.1.0"
-source = "git+https://github.com/HigherOrderCO/hvm-lang.git#f4765ed11f1423937a4e48d104953db1acc0b8cb"
 dependencies = [
  "anyhow",
  "bimap",

@@ -26,19 +26,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   match action.as_str() {
     "run" => {
-      let (book, mut net) = load(f_name);
+      let (book, net) = load(f_name);
       let start_time = std::time::Instant::now();
       net.expand(&book, run::ROOT);
       net.normal(&book);
       println!("{}", ast::show_runtime_net(&net));
       if args.len() >= 4 && args[3] == "-s" {
         println!("");
-        println!("RWTS   : {}", net.anni + net.comm + net.eras + net.dref + net.oper);
-        println!("- ANNI : {}", net.anni);
-        println!("- COMM : {}", net.comm);
-        println!("- ERAS : {}", net.eras);
-        println!("- DREF : {}", net.dref);
-        println!("- OPER : {}", net.oper);
+        println!("RWTS   : {}", net.rewrites());
+        println!("- ANNI : {}", net.anni_());
+        println!("- COMM : {}", net.comm_());
+        println!("- ERAS : {}", net.eras());
+        println!("- DREF : {}", net.dref());
+        println!("- OPER : {}", net.oper());
         println!("TIME   : {:.3} s", (start_time.elapsed().as_millis() as f64) / 1000.0);
         println!("RPS    : {:.3} m", (net.rewrites() as f64) / (start_time.elapsed().as_millis() as f64) / 1000.0);
       }

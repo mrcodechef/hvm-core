@@ -41,11 +41,11 @@ pub fn hvm_lang_normal(book: DefinitionBook, size: usize) -> (String, run::Net) 
   let (term, defs, info) = hvm_lang::run_book(book, size).unwrap();
   let term = term.to_string(&defs);
   let mut rnet = run::Net::new(size);
-  rnet.anni = info.stats.rewrites.anni;
-  rnet.comm = info.stats.rewrites.comm;
-  rnet.eras = info.stats.rewrites.eras;
-  rnet.dref = info.stats.rewrites.dref;
-  rnet.oper = info.stats.rewrites.oper;
+  rnet.anni = info.stats.rewrites.anni.into();
+  rnet.comm = info.stats.rewrites.comm.into();
+  rnet.eras = info.stats.rewrites.eras.into();
+  rnet.dref = info.stats.rewrites.dref.into();
+  rnet.oper = info.stats.rewrites.oper.into();
   ast::net_to_runtime(&mut rnet, &info.net);
   (term, rnet)
 }

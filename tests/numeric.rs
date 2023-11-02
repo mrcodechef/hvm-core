@@ -14,7 +14,7 @@ fn op_net(lnum: u32, op: NumericOp, rnum: u32) -> (run::Book, run::Net) {
 
 #[test]
 fn test_add() {
-  let (book, mut net) = op_net(10, run::ADD, 2);
+  let (book, net) = op_net(10, run::ADD, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#12");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -22,7 +22,7 @@ fn test_add() {
 
 #[test]
 fn test_sub() {
-  let (book, mut net) = op_net(10, run::SUB, 2);
+  let (book, net) = op_net(10, run::SUB, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#8");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -30,7 +30,7 @@ fn test_sub() {
 
 #[test]
 fn test_mul() {
-  let (book, mut net) = op_net(10, run::MUL, 2);
+  let (book, net) = op_net(10, run::MUL, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#20");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -38,7 +38,7 @@ fn test_mul() {
 
 #[test]
 fn test_div() {
-  let (book, mut net) = op_net(10, run::DIV, 2);
+  let (book, net) = op_net(10, run::DIV, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#5");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -46,7 +46,7 @@ fn test_div() {
 
 #[test]
 fn test_mod() {
-  let (book, mut net) = op_net(10, run::MOD, 2);
+  let (book, net) = op_net(10, run::MOD, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#0");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -54,7 +54,7 @@ fn test_mod() {
 
 #[test]
 fn test_eq() {
-  let (book, mut net) = op_net(10, run::EQ, 2);
+  let (book, net) = op_net(10, run::EQ, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#0");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -62,7 +62,7 @@ fn test_eq() {
 
 #[test]
 fn test_ne() {
-  let (book, mut net) = op_net(10, run::NE, 2);
+  let (book, net) = op_net(10, run::NE, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#1");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -70,7 +70,7 @@ fn test_ne() {
 
 #[test]
 fn test_lt() {
-  let (book, mut net) = op_net(10, run::LT, 2);
+  let (book, net) = op_net(10, run::LT, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#0");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -78,7 +78,7 @@ fn test_lt() {
 
 #[test]
 fn test_gt() {
-  let (book, mut net) = op_net(10, run::GT, 2);
+  let (book, net) = op_net(10, run::GT, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#1");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -86,7 +86,7 @@ fn test_gt() {
 
 #[test]
 fn test_and() {
-  let (book, mut net) = op_net(10, run::AND, 2);
+  let (book, net) = op_net(10, run::AND, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#2");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -94,7 +94,7 @@ fn test_and() {
 
 #[test]
 fn test_or() {
-  let (book, mut net) = op_net(10, run::OR, 2);
+  let (book, net) = op_net(10, run::OR, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#10");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -102,7 +102,7 @@ fn test_or() {
 
 #[test]
 fn test_xor() {
-  let (book, mut net) = op_net(10, run::XOR, 2);
+  let (book, net) = op_net(10, run::XOR, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#8");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -110,7 +110,7 @@ fn test_xor() {
 
 #[test]
 fn test_not() {
-  let (book, mut net) = op_net(0, run::NOT, 256);
+  let (book, net) = op_net(0, run::NOT, 256);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#16776959");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -118,7 +118,7 @@ fn test_not() {
 
 #[test]
 fn test_lsh() {
-  let (book, mut net) = op_net(10, run::LSH, 2);
+  let (book, net) = op_net(10, run::LSH, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#40");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -126,7 +126,7 @@ fn test_lsh() {
 
 #[test]
 fn test_rsh() {
-  let (book, mut net) = op_net(10, run::RSH, 2);
+  let (book, net) = op_net(10, run::RSH, 2);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#2");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -136,7 +136,7 @@ fn test_rsh() {
 /// Division by zero always return the value of 0xFFFFFF,
 /// that is read as the unsigned integer `16777215`
 fn test_div_by_0() {
-  let (book, mut net) = op_net(9, run::DIV, 0);
+  let (book, net) = op_net(9, run::DIV, 0);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"#16777215");
   assert_debug_snapshot!(net.rewrites(), @"5");

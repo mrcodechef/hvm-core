@@ -6,7 +6,7 @@ mod loaders;
 
 #[test]
 fn test_era_era() {
-  let (book, mut net) = parse_core("@main = * & * ~ *", 16);
+  let (book, net) = parse_core("@main = * & * ~ *", 16);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"*");
   assert_debug_snapshot!(net.rewrites(), @"2");
@@ -14,7 +14,7 @@ fn test_era_era() {
 
 #[test]
 fn test_commutation() {
-  let (book, mut net) = parse_core("@main = root & (x x) ~ [* root]", 16);
+  let (book, net) = parse_core("@main = root & (x x) ~ [* root]", 16);
   net.normal(&book);
   assert_snapshot!(show_net(&net), @"(b b)");
   assert_debug_snapshot!(net.rewrites(), @"5");
@@ -22,7 +22,7 @@ fn test_commutation() {
 
 #[test]
 fn test_bool_and() {
-  let (book, mut net) = parse_core(
+  let (book, net) = parse_core(
     "
     @true = (b (* b))
     @fals = (* (b b))
@@ -77,7 +77,7 @@ fn test_queue() {
 
 #[test]
 fn test_deref() {
-  let (book, mut net) = parse_core("
+  let (book, net) = parse_core("
     @ref = R & (x x) ~ (* R)
     @main = root & (* @ref) ~ (* root)
   ", 16);

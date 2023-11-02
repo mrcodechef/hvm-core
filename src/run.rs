@@ -7,7 +7,8 @@
 // they interact with nodes, and are cleared when they interact with ERAs, allowing for constant
 // space evaluation of recursive functions on Scott encoded datatypes.
 
-use std::sync::{mpsc::{Sender, Receiver, channel}, Mutex};
+use crossbeam_queue::SegQueue;
+use std::sync::{mpsc::{Sender, Receiver, channel}, Mutex, atomic::{AtomicUsize, Ordering}, MutexGuard};
 
 pub type Val = u32;
 
@@ -85,9 +86,9 @@ pub struct Ptr(pub Val);
 
 #[derive(Debug)]
 pub struct Heap {
-  data: Vec<Mutex<(Ptr, Ptr)>>,
-  next: usize,
-  used: usize,
+  data: Vec<Mutex<AuxPorts>>,
+  next: AtomicUsize,
+  used: AtomicUsize,
   full: bool,
 }
 
@@ -96,24 +97,42 @@ type Redex = (Ptr, Ptr);
 // A interaction combinator net.
 #[derive(Debug)]
 pub struct Net {
-  // redexes
-  tx_redex: Sender<Redex>,
-  rx_redex: Receiver<Redex>,
-  redexes: Vec<Redex>,
-
+  redexes: SegQueue<Redex>, // redexes
   pub heap: Heap, // nodes
-  pub anni: usize, // anni rewrites
-  pub comm: usize, // comm rewrites
-  pub eras: usize, // eras rewrites
-  pub dref: usize, // dref rewrites
-  pub oper: usize, // oper rewrites
+  pub anni: AtomicUsize, // anni rewrites
+  pub comm: AtomicUsize, // comm rewrites
+  pub eras: AtomicUsize, // eras rewrites
+  pub dref: AtomicUsize, // dref rewrites
+  pub oper: AtomicUsize, // oper rewrites
+}
+
+impl Net {
+  pub fn anni_(&self) -> usize {
+    self.anni.load(Ordering::Relaxed)
+  }
+
+  pub fn comm_(&self) -> usize {
+    self.comm.load(Ordering::Relaxed)
+  }
+
+  pub fn eras(&self) -> usize {
+    self.eras.load(Ordering::Relaxed)
+  }
+
+  pub fn dref(&self) -> usize {
+    self.dref.load(Ordering::Relaxed)
+  }
+
+  pub fn oper(&self) -> usize {
+    self.oper.load(Ordering::Relaxed)
+  }
 }
 
 // A compact closed net, used for dereferences.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub struct Def {
   pub rdex: Vec<Redex>,
-  pub node: Vec<(Ptr, Ptr)>,
+  pub node: Vec<AuxPorts>,
 }
 
 // A map of id to definitions (closed nets).
@@ -127,6 +146,17 @@ macro_rules! VAR{() => {VR1 | VR2}}
 macro_rules! RED{() => {RD1 | RD2}}
 macro_rules! OPS{() => {OP2 | OP1 | MAT}}
 macro_rules! PRI{() => {REF | ERA | NUM | OPS!() | CTR!()}}
+
+type AuxPorts = (Ptr, Ptr);
+type AcquiredNode<'a> = MutexGuard<'a, AuxPorts>;
+
+pub fn set_port(node: &mut AuxPorts, port: Port, val: Ptr) {
+  if port == P1 {
+    node.0 = val;
+  } else {
+    node.1 = val;
+  }
+}
 
 impl From<Tag> for u8 {
   #[inline(always)]
@@ -258,61 +288,92 @@ impl Heap {
   pub fn new(size: usize) -> Heap {
     Heap {
       data: (0 .. size).map(|_| Mutex::new((NULL, NULL))).collect(),
-      next: 0,
-      used: 0,
+      next: AtomicUsize::new(0),
+      used: AtomicUsize::new(0),
       full: false,
     }
   }
 
   #[inline(always)]
-  pub fn alloc(&mut self) -> Val {
-    self.next = (self.next + 1) % self.data.len();
-    while !self.get(self.next as Val, P1).is_nil() {
-      self.next = (self.next + 1) % self.data.len();
-    }
-    self.used += 1;
-    self.next as Val
-  }
+  pub fn alloc(&self) -> (AcquiredNode, Val) {
+    loop {
+      // Increment next, wrapping around
+      let mut cur = self.next.load(Ordering::Relaxed);
+      let n = self.data.len();
+      loop {
+        let new = (cur + 1) % n;
+        match self.next.compare_exchange_weak(cur, new, Ordering::Relaxed, Ordering::Relaxed) {
+          Ok(_) => break,
+          Err(x) => cur = x,
+        }
+      }
 
-  #[inline(always)]
-  pub fn free(&mut self, index: Val) {
-    self.used -= 1;
-    self.set(index, P1, NULL);
-    self.set(index, P2, NULL);
-  }
-
-  #[inline(always)]
-  pub fn get(&self, index: Val, port: Port) -> Ptr {
-    let node = unsafe { self.data.get_unchecked(index as usize) }.lock().unwrap();
-    if port == P1 {
-      node.0
-    } else {
-      node.1
+      // Check if it's free
+      // Note: A thread can block on .lock() if more than self.data.len() threads call `alloc`` at the same time
+      let lock_to_free_slot = unsafe { self.data.get_unchecked(cur as usize) }.lock().unwrap();
+      if lock_to_free_slot.0.is_nil() {
+        self.used.fetch_add(1, Ordering::Relaxed);
+        return (lock_to_free_slot, cur as Val);
+      }
     }
   }
 
   #[inline(always)]
-  pub fn set(&mut self, index: Val, port: Port, value: Ptr) {
-    let mut node = unsafe { self.data.get_unchecked_mut(index as usize) }.lock().unwrap();
-    if port == P1 {
-      node.0 = value;
-    } else {
-      node.1 = value;
-    }
+  pub fn free(&self, mut node: AcquiredNode) {
+    self.used.fetch_sub(1, Ordering::Relaxed);
+    *node = (NULL, NULL);
   }
+
+  // #[inline(always)]
+  // pub fn get(&self, index: Val, port: Port) -> Ptr {
+  //   let node = unsafe { self.data.get_unchecked(index as usize) }.lock().unwrap();
+  //   if port == P1 {
+  //     node.0
+  //   } else {
+  //     node.1
+  //   }
+  // }
+
+  #[inline(always)]
+  pub fn acquire_node(&self, index: Val) -> AcquiredNode {
+    unsafe { self.data.get_unchecked(index as usize) }.lock().unwrap()
+  }
+
+  #[inline(always)]
+  pub fn try_acquire_node(&self, index: Val) -> Option<AcquiredNode> {
+    unsafe { self.data.get_unchecked(index as usize) }.try_lock().ok()
+  }
+
+  #[inline(always)]
+  pub fn decompose(&self, index: Val) -> AuxPorts {
+    let node = self.acquire_node(index);
+    let (n0, n1) = *node;
+    self.free(node);
+    (n0, n1)
+  }
+
+  // #[inline(always)]
+  // pub fn set(&self, index: Val, port: Port, value: Ptr) {
+  //   let mut node = unsafe { self.data.get_unchecked(index as usize) }.lock().unwrap();
+  //   if port == P1 {
+  //     node.0 = value;
+  //   } else {
+  //     node.1 = value;
+  //   }
+  // }
 
   #[inline(always)]
   pub fn get_root(&self) -> Ptr {
-    return self.get(0, P2);
+    self.acquire_node(0).1
   }
 
   #[inline(always)]
-  pub fn set_root(&mut self, value: Ptr) {
-    self.set(0, P2, value);
+  pub fn set_root(&self, value: Ptr) {
+    set_port(&mut self.acquire_node(0), P2, value)
   }
 
   #[inline(always)]
-  pub fn compact(&self) -> Vec<(Ptr, Ptr)> {
+  pub fn compact(&self) -> Vec<AuxPorts> {
     let mut nodes = vec![];
     loop {
       let node = self.data[nodes.len()].lock().unwrap();
@@ -332,23 +393,20 @@ impl Heap {
 impl Net {
   // Creates an empty net with given size.
   pub fn new(size: usize) -> Self {
-    let (tx_redex, rx_redex) = channel();
     Net {
-      tx_redex,
-      rx_redex,
-      redexes: vec![],
+      redexes: Default::default(),
       heap: Heap::new(size),
-      anni: 0,
-      comm: 0,
-      eras: 0,
-      dref: 0,
-      oper: 0,
+      anni: AtomicUsize::new(0),
+      comm: AtomicUsize::new(0),
+      eras: AtomicUsize::new(0),
+      dref: AtomicUsize::new(0),
+      oper: AtomicUsize::new(0),
     }
   }
 
   // Creates a net and boots from a REF.
   pub fn boot(&mut self, root_id: Val) {
-    self.heap.set_root(Ptr::new(REF, root_id));
+    set_port(&mut self.heap.acquire_node(0), P2, Ptr::new(REF, root_id));
   }
 
   // Converts to a def.
@@ -358,13 +416,12 @@ impl Net {
 
   // Reads back from a def.
   pub fn from_def(def: Def) -> Self {
-    let mut net = Net::new(def.node.len());
+    let net = Net::new(def.node.len());
     for (i, &(p1, p2)) in def.node.iter().enumerate() {
-      net.heap.set(i as Val, P1, p1);
-      net.heap.set(i as Val, P2, p2);
+      *net.heap.acquire_node(i as Val) = (p1, p2);
     }
     for r in def.rdex {
-      net.put_redex(r);
+      net.push_redex(r);
     }
     net
   }
@@ -372,38 +429,129 @@ impl Net {
   // Gets a pointer's target.
   #[inline(always)]
   pub fn get_target(&self, ptr: Ptr) -> Ptr {
-    self.heap.get(ptr.val(), ptr.0 & 1)
+    let node = self.heap.acquire_node(ptr.val());
+    if ptr.0 & 1 == P1 {
+      node.0
+    } else {
+      node.1
+    }
   }
 
-  // Sets a pointer's target.
-  #[inline(always)]
-  pub fn set_target(&mut self, ptr: Ptr, val: Ptr) {
-    self.heap.set(ptr.val(), ptr.0 & 1, val)
+  // // Sets a pointer's target.
+  // #[inline(always)]
+  // pub fn set_target(&self, ptr: Ptr, val: Ptr) {
+  //   self.heap.set(ptr.val(), ptr.0 & 1, val)
+  // }
+
+  // Links two pointers, forming a new wire.
+  pub fn link(&self, a: Ptr, b: Ptr) {
+    // // Creates redex A-B
+    // if a.is_pri() && b.is_pri() {
+    //   if Ptr::can_skip(a, b) {
+    //     self.eras.fetch_add(1, Ordering::Relaxed);
+    //   } else {
+    //     self.push_redex((a, b));
+    //   }
+    //   return;
+    // }
+    // // Substitutes A
+    // if a.is_var() {
+    //   self.set_target(a, b);
+    // }
+    // // Substitutes B
+    // if b.is_var() {
+    //   self.set_target(b, a);
+    // }
+    todo!()
   }
 
   // Links two pointers, forming a new wire.
-  pub fn link(&mut self, a: Ptr, b: Ptr) {
+  pub fn link_par(&self, a: Ptr, b: Ptr) {
+    let (a_target, b_target) = loop {
+      // ERA | REF | NUM
+      let a_lock = if a.is_skp() { None } else { Some(self.heap.acquire_node(a.val())) };
+      let b_lock = if b.is_skp() { None } else {
+        let Some(b_lock) = self.heap.try_acquire_node(b.val()) else { continue };
+        Some(b_lock)
+      };
+      break (a_lock, b_lock);
+    };
+
     // Creates redex A-B
     if a.is_pri() && b.is_pri() {
       if Ptr::can_skip(a, b) {
-        self.eras += 1;
+        self.eras.fetch_add(1, Ordering::Relaxed);
       } else {
-        self.put_redex((a, b));
+        self.push_redex((a, b));
       }
       return;
     }
+
     // Substitutes A
-    if a.is_var() {
-      self.set_target(a, b);
+    if let Some(mut a_target) = a_target {
+      match a.tag() {
+        VR1 => a_target.0 = b,
+        VR2 => a_target.1 = b,
+        _ => {},
+      }
     }
-    // Substitutes B
-    if b.is_var() {
-      self.set_target(b, a);
+
+    if let Some(mut b_target) = b_target {
+      match b.tag() {
+        VR1 => b_target.0 = a,
+        VR2 => b_target.1 = a,
+        _ => {},
+      }
     }
+    // // Creates redex A-B
+    // if a.is_pri() && b.is_pri() {
+    //   if Ptr::can_skip(a, b) {
+    //     self.eras.fetch_add(1, Ordering::Relaxed);
+    //   } else {
+    //     self.push_redex((a, b));
+    //   }
+    //   return;
+    // }
+
+    // match (a.is_var(), b.is_var()) {
+    //   (false, false) => {}
+    //   (true, false) => {
+    //     self.set_target(a, b);
+    //   }
+    //   (false, true) => {
+    //     self.set_target(b, a);
+    //   }
+    //   (true, true) => {
+    //     // TODO: Use get_unchecked
+    //     loop {
+    //       let a_lock = self.heap.data[a.val() as usize].lock().unwrap();
+    //       let Ok(mut b_lock) = self.heap.data[b.val() as usize].try_lock() else { continue };
+
+    //       // Substitutes A
+    //       if a.is_var() {
+    //         let mut a_target_lock = self.heap.data[a.val() as usize].lock().unwrap();
+
+    //         if a.0 & 1 == P1 {
+    //           a_target_lock.0 = b;
+    //         } else {
+    //           a_target_lock.1 = b;
+    //         }
+    //       }
+    //       // Substitutes B
+    //       if b.is_var() {
+    //         if b.0 & 1 == P1 {
+    //           b_lock.0 = a;
+    //         } else {
+    //           b_lock.1 = a;
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
   }
 
   // Performs an interaction over a redex.
-  pub fn interact(&mut self, book: &Book, a: Ptr, b: Ptr) {
+  pub fn interact(&self, book: &Book, a: Ptr, b: Ptr) {
     let mut a = a;
     let mut b = b;
 
@@ -422,16 +570,16 @@ impl Net {
       (CTR!(), CTR!()) => self.comm(a, b),
       (CTR!(), ERA)    => self.era2(a),
       (ERA, CTR!())    => self.era2(b),
-      (REF, ERA)       => self.eras += 1,
-      (ERA, REF)       => self.eras += 1,
-      (ERA, ERA)       => self.eras += 1,
+      (REF, ERA)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
+      (ERA, REF)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
+      (ERA, ERA)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
       (VAR!(), _)      => self.link(a, b),
       (_, VAR!())      => self.link(b, a),
       (CTR!(), NUM)    => self.copy(a, b),
       (NUM, CTR!())    => self.copy(b, a),
-      (NUM, ERA)       => self.eras += 1,
-      (ERA, NUM)       => self.eras += 1,
-      (NUM, NUM)       => self.eras += 1,
+      (NUM, ERA)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
+      (ERA, NUM)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
+      (NUM, NUM)       => { self.eras.fetch_add(1, Ordering::Relaxed); },
       (OP2, NUM)       => self.op2n(a, b),
       (NUM, OP2)       => self.op2n(b, a),
       (OP1, NUM)       => self.op1n(a, b),
@@ -465,125 +613,143 @@ impl Net {
     };
   }
 
-  pub fn conn(&mut self, a: Ptr, b: Ptr) {
-    self.anni += 1;
-    self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
-    self.heap.free(a.val());
-    self.heap.free(b.val());
+  // pub fn conn(&self, a: Ptr, b: Ptr) {
+  //   self.anni.fetch_add(1, Ordering::Relaxed);
+  //   self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
+  //   self.heap.free(a.val());
+  //   self.heap.free(b.val());
+  // }
+
+  pub fn anni(&self, a: Ptr, b: Ptr) {
+    self.anni.fetch_add(1, Ordering::Relaxed);
+
+    let (a0, a1) = self.heap.decompose(a.val());
+    let (b0, b1) = self.heap.decompose(b.val());
+
+    self.link_par(a0, b0);
+    self.link_par(a1, b1);
   }
 
-  pub fn anni(&mut self, a: Ptr, b: Ptr) {
-    self.anni += 1;
-    self.link(self.heap.get(a.val(), P1), self.heap.get(b.val(), P1));
-    self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
-    self.heap.free(a.val());
-    self.heap.free(b.val());
+  pub fn comm(&self, a: Ptr, b: Ptr) {
+    self.comm.fetch_add(1, Ordering::Relaxed);
+    // We are getting allocated locations and their mutex guards
+    // which prevents new threads from allocating that same region
+    // while we hold this guard
+    let ((mut m1, loc1), (mut m2, loc2), (mut m3, loc3), (mut m4, loc4)) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
+
+    *m1 = (Ptr::new(VR1, loc3), Ptr::new(VR1, loc4));
+    *m2 = (Ptr::new(VR2, loc3), Ptr::new(VR2, loc4));
+    *m3 = (Ptr::new(VR1, loc1), Ptr::new(VR1, loc2));
+    *m4 = (Ptr::new(VR2, loc1), Ptr::new(VR2, loc2));
+
+    // We are dropping the mutex guards here, which allows
+    // the linking part to proceed(also because it is not NULL anymore)
+    drop(m1); drop(m2); drop(m3); drop(m4);
+
+    // TODO: Use get_unchecked
+
+    let (a0, a1) = self.heap.decompose(a.val());
+    self.link_par(a0, Ptr::new(b.tag(), loc1));
+    self.link_par(a1, Ptr::new(b.tag(), loc2));
+
+    let (b0, b1) = self.heap.decompose(b.val());
+    self.link_par(b0, Ptr::new(a.tag(), loc3));
+    self.link_par(b1, Ptr::new(a.tag(), loc4));
   }
 
-  pub fn comm(&mut self, a: Ptr, b: Ptr) {
-    self.comm += 1;
-    let (loc1, loc2, loc3, loc4) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
-    self.link(self.heap.get(a.val(), P1), Ptr::new(b.tag(), loc1));
-    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc3));
-    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc2));
-    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc4));
-    self.heap.set(loc1, P1, Ptr::new(VR1, loc3));
-    self.heap.set(loc1, P2, Ptr::new(VR1, loc4));
-    self.heap.set(loc2, P1, Ptr::new(VR2, loc3));
-    self.heap.set(loc2, P2, Ptr::new(VR2, loc4));
-    self.heap.set(loc3, P1, Ptr::new(VR1, loc1));
-    self.heap.set(loc3, P2, Ptr::new(VR1, loc2));
-    self.heap.set(loc4, P1, Ptr::new(VR2, loc1));
-    self.heap.set(loc4, P2, Ptr::new(VR2, loc2));
-    self.heap.free(a.val());
-    self.heap.free(b.val());
+  pub fn pass(&self, a: Ptr, b: Ptr) {
+    // self.comm.fetch_add(1, Ordering::Relaxed);
+
+    // let ((m1, loc1), (m2, loc2), (m3, loc3)) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
+
+    // let a_target = self.heap.acquire_node(a.val(), )
+
+    // *m1 = (Ptr::new(VR2, loc2), Ptr::new(VR2, loc3));
+    // *m2 = (self.heap.get(a.val(), P1), Ptr::new(VR1, loc1));
+    // *m3 = (self.heap.get(a.val(), P1), Ptr::new(VR2, loc1));
+
+    // self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc1));
+    // self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc2));
+    // self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc3));
+    // self.heap.free(a.val());
+    // self.heap.free(b.val());
+    todo!()
   }
 
-  pub fn pass(&mut self, a: Ptr, b: Ptr) {
-    self.comm += 1;
-    let (loc1, loc2, loc3) = (self.heap.alloc(), self.heap.alloc(), self.heap.alloc());
-    self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc1));
-    self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc2));
-    self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc3));
-    self.heap.set(loc1, P1, Ptr::new(VR2, loc2));
-    self.heap.set(loc1, P2, Ptr::new(VR2, loc3));
-    self.heap.set(loc2, P1, self.heap.get(a.val(), P1));
-    self.heap.set(loc2, P2, Ptr::new(VR1, loc1));
-    self.heap.set(loc3, P1, self.heap.get(a.val(), P1));
-    self.heap.set(loc3, P2, Ptr::new(VR2, loc1));
-    self.heap.free(a.val());
-    self.heap.free(b.val());
+  pub fn copy(&self, a: Ptr, b: Ptr) {
+    // self.comm.fetch_add(1, Ordering::Relaxed);
+    // self.link(self.heap.get(a.val(), P1), b);
+    // self.link(self.heap.get(a.val(), P2), b);
+    // self.heap.free(a.val());
+    todo!()
   }
 
-  pub fn copy(&mut self, a: Ptr, b: Ptr) {
-    self.comm += 1;
-    self.link(self.heap.get(a.val(), P1), b);
-    self.link(self.heap.get(a.val(), P2), b);
-    self.heap.free(a.val());
+  pub fn era2(&self, a: Ptr) {
+    // self.eras.fetch_add(1, Ordering::Relaxed);
+    // self.link(self.heap.get(a.val(), P1), ERAS);
+    // self.link(self.heap.get(a.val(), P2), ERAS);
+    // self.heap.free(a.val());
+    todo!()
   }
 
-  pub fn era2(&mut self, a: Ptr) {
-    self.eras += 1;
-    self.link(self.heap.get(a.val(), P1), ERAS);
-    self.link(self.heap.get(a.val(), P2), ERAS);
-    self.heap.free(a.val());
-  }
-
-  pub fn era1(&mut self, a: Ptr) {
-    self.eras += 1;
-    self.link(self.heap.get(a.val(), P2), ERAS);
-    self.heap.free(a.val());
+  pub fn era1(&self, a: Ptr) {
+    // self.eras.fetch_add(1, Ordering::Relaxed);
+    // self.link(self.heap.get(a.val(), P2), ERAS);
+    // self.heap.free(a.val());
+    todo!()
   }
 
 
-  pub fn op2n(&mut self, a: Ptr, b: Ptr) {
-    self.oper += 1;
-    let mut p1 = self.heap.get(a.val(), P1);
-    // Optimization: perform chained ops at once
-    if p1.is_num() {
-      let mut rt = b.val();
-      let mut p2 = self.heap.get(a.val(), P2);
-      loop {
-        self.oper += 1;
-        rt = self.prim(rt, p1.val());
-        // If P2 is OP2, keep looping
-        if p2.is_op2() {
-          p1 = self.heap.get(p2.val(), P1);
-          if p1.is_num() {
-            p2 = self.heap.get(p2.val(), P2);
-            self.oper += 1; // since OP1 is skipped
-            continue;
-          }
-        }
-        // If P2 is OP1, flip args and keep looping
-        if p2.is_op1() {
-          let tmp = rt;
-          rt = self.heap.get(p2.val(), P1).val();
-          p1 = Ptr::new(NUM, tmp);
-          p2 = self.heap.get(p2.val(), P2);
-          continue;
-        }
-        break;
-      }
-      self.link(Ptr::new(NUM, rt), p2);
-      return;
-    }
-    self.heap.set(a.val(), P1, b);
-    self.link(Ptr::new(OP1, a.val()), p1);
+  pub fn op2n(&self, a: Ptr, b: Ptr) {
+    // self.oper.fetch_add(1, Ordering::Relaxed);
+    // let mut p1 = self.heap.get(a.val(), P1);
+    // // Optimization: perform chained ops at once
+    // if p1.is_num() {
+    //   let mut rt = b.val();
+    //   let mut p2 = self.heap.get(a.val(), P2);
+    //   loop {
+    //     self.oper.fetch_add(1, Ordering::Relaxed);
+    //     rt = self.prim(rt, p1.val());
+    //     // If P2 is OP2, keep looping
+    //     if p2.is_op2() {
+    //       p1 = self.heap.get(p2.val(), P1);
+    //       if p1.is_num() {
+    //         p2 = self.heap.get(p2.val(), P2);
+    //         self.oper.fetch_add(1, Ordering::Relaxed); // since OP1 is skipped
+    //         continue;
+    //       }
+    //     }
+    //     // If P2 is OP1, flip args and keep looping
+    //     if p2.is_op1() {
+    //       let tmp = rt;
+    //       rt = self.heap.get(p2.val(), P1).val();
+    //       p1 = Ptr::new(NUM, tmp);
+    //       p2 = self.heap.get(p2.val(), P2);
+    //       continue;
+    //     }
+    //     break;
+    //   }
+    //   self.link(Ptr::new(NUM, rt), p2);
+    //   return;
+    // }
+    // self.heap.set(a.val(), P1, b);
+    // self.link(Ptr::new(OP1, a.val()), p1);
+    todo!()
   }
 
-  pub fn op1n(&mut self, a: Ptr, b: Ptr) {
-    self.oper += 1;
-    let p1 = self.heap.get(a.val(), P1);
-    let p2 = self.heap.get(a.val(), P2);
-    let v0 = p1.val() as u32;
-    let v1 = b.val() as u32;
-    let v2 = self.prim(v0, v1);
-    self.link(Ptr::new(NUM, v2), p2);
-    self.heap.free(a.val());
+  pub fn op1n(&self, a: Ptr, b: Ptr) {
+    // self.oper.fetch_add(1, Ordering::Relaxed);
+    // let p1 = self.heap.get(a.val(), P1);
+    // let p2 = self.heap.get(a.val(), P2);
+    // let v0 = p1.val() as u32;
+    // let v1 = b.val() as u32;
+    // let v2 = self.prim(v0, v1);
+    // self.link(Ptr::new(NUM, v2), p2);
+    // self.heap.free(a.val());
+    todo!()
   }
 
-  pub fn prim(&mut self, a: u32, b: u32) -> u32 {
+  pub fn prim(&self, a: u32, b: u32) -> u32 {
     let a_opr = (a >> 24) & 0xF;
     let b_opr = (b >> 24) & 0xF; // not used yet
     let a_val = a & 0xFFFFFF;
@@ -610,31 +776,32 @@ impl Net {
     }
   }
 
-  pub fn mtch(&mut self, a: Ptr, b: Ptr) {
-    self.oper += 1;
-    let p1 = self.heap.get(a.val(), P1); // branch
-    let p2 = self.heap.get(a.val(), P2); // return
-    if b.val() == 0 {
-      let loc = self.heap.alloc();
-      self.heap.set(loc, P2, ERAS);
-      self.link(p1, Ptr::new(CT0, loc));
-      self.link(p2, Ptr::new(VR1, loc));
-      self.heap.free(a.val());
-    } else {
-      let (loc1, loc2) = (self.heap.alloc(), self.heap.alloc());
-      self.heap.set(loc1, P1, ERAS);
-      self.heap.set(loc1, P2, Ptr::new(CT0, loc2));
-      self.heap.set(loc2, P1, Ptr::new(NUM, b.val() - 1));
-      self.link(p1, Ptr::new(CT0, loc1));
-      self.link(p2, Ptr::new(VR2, loc2));
-      self.heap.free(a.val());
-    }
+  pub fn mtch(&self, a: Ptr, b: Ptr) {
+    // self.oper.fetch_add(1, Ordering::Relaxed);
+    // let p1 = self.heap.get(a.val(), P1); // branch
+    // let p2 = self.heap.get(a.val(), P2); // return
+    // if b.val() == 0 {
+    //   let loc = self.heap.alloc();
+    //   self.heap.set(loc, P2, ERAS);
+    //   self.link(p1, Ptr::new(CT0, loc));
+    //   self.link(p2, Ptr::new(VR1, loc));
+    //   self.heap.free(a.val());
+    // } else {
+    //   let (loc1, loc2) = (self.heap.alloc(), self.heap.alloc());
+    //   self.heap.set(loc1, P1, ERAS);
+    //   self.heap.set(loc1, P2, Ptr::new(CT0, loc2));
+    //   self.heap.set(loc2, P1, Ptr::new(NUM, b.val() - 1));
+    //   self.link(p1, Ptr::new(CT0, loc1));
+    //   self.link(p2, Ptr::new(VR2, loc2));
+    //   self.heap.free(a.val());
+    // }
+    todo!()
   }
 
   // Expands a closed net.
   #[inline(always)]
-  pub fn deref(&mut self, book: &Book, ptr: Ptr, parent: Ptr) -> Ptr {
-    self.dref += 1;
+  pub fn deref(&self, book: &Book, ptr: Ptr, parent: Ptr) -> Ptr {
+    self.dref.fetch_add(1, Ordering::Relaxed);
     let mut root = ptr;
     // FIXME: change "while" to "if" once lang prevents refs from returning refs
     while root.is_ref() {
@@ -646,8 +813,8 @@ impl Net {
       }
 
       // TODO: Reuse Vec between calls (thread-local memory)
-      let mut locs = Vec::with_capacity(def_net.node.len());
-      locs.push(parent.val());
+      let mut locs: Vec<(AcquiredNode, Val)> = Vec::with_capacity(def_net.node.len());
+      locs.push((self.heap.acquire_node(parent.val()), parent.val()));
       locs.extend(
         def_net.node.iter()
           .skip(1) // skip root
@@ -656,7 +823,8 @@ impl Net {
 
       let adjust_ptr = #[inline(always)] |ptr: &mut Ptr| {
         if ptr.has_loc() {
-          *ptr = Ptr::new(ptr.tag(), locs[ptr.val() as usize]);
+          let (_, new_loc) = locs[ptr.val() as usize];
+          *ptr = Ptr::new(ptr.tag(), new_loc);
         }
       };
 
@@ -673,20 +841,21 @@ impl Net {
         let mut b = *b;
         adjust_ptr(&mut a);
         adjust_ptr(&mut b);
-        self.put_redex((a, b));
+        self.push_redex((a, b));
       }
 
       // Load nodes and redexes
-      for (loc, (p1, p2)) in locs.into_iter().skip(1).zip(&def_net.node[1..]) {
-        self.heap.set(loc, P1, *p1);
-        self.heap.set(loc, P2, *p2);
+      for ((mut aux_ports, _new_loc), (p1, p2)) in locs.into_iter().skip(1).zip(&def_net.node[1..]) {
+        *aux_ports = (*p1, *p2);
+        // self.heap.set(loc, P1, *p1);
+        // self.heap.set(loc, P2, *p2);
       }
     }
     return root;
   }
 
   // Reduces all redexes.
-  pub fn reduce(&mut self, book: &Book) {
+  pub fn reduce(&self, book: &Book) {
     // let mut redex_snapshot = std::mem::take(&mut self.redexes);
     // while redex_snapshot.len() > 0 {
     //   for (a, b) in redex_snapshot.drain(..) {
@@ -694,57 +863,69 @@ impl Net {
     //   }
     //   std::mem::swap(&mut self.redexes, &mut redex_snapshot);
     // }
-    while let Some((a, b)) = self.get_next_redex() {
-      self.interact(book, a, b);
+
+    while !self.redexes.is_empty() {
+      rayon::scope(|s| {
+        while let Some((a, b)) = self.pop_redex() {
+          s.spawn(move |_| {
+            self.interact(book, a, b);
+          });
+        }
+      });
     }
   }
 
   // Reduce a net to normal form.
-  pub fn normal(&mut self, book: &Book) {
+  pub fn normal(&self, book: &Book) {
+    // expand
+    // while queue not empty:
+    //   while queue not empty:
+    //     scope
+    //       for all r in queue: interact and push to queue
+    //   expand
+
     self.expand(book, ROOT);
-    while self.has_redex() {
+    while !self.redexes.is_empty() {
       self.reduce(book);
       self.expand(book, ROOT);
     }
   }
 
   // Expands heads.
-  pub fn expand(&mut self, book: &Book, dir: Ptr) {
+  pub fn expand(&self, book: &Book, dir: Ptr) {
     let ptr = self.get_target(dir);
     if ptr.is_ctr() {
       self.expand(book, Ptr::new(VR1, ptr.val()));
       self.expand(book, Ptr::new(VR2, ptr.val()));
     } else if ptr.is_ref() {
-      let exp = self.deref(book, ptr, dir);
-      self.set_target(dir, exp);
+      let _exp = self.deref(book, ptr, dir);
+      // self.set_target(dir, exp);
     }
   }
 
   // Total rewrite count.
   pub fn rewrites(&self) -> usize {
-    self.anni + self.comm + self.eras + self.dref + self.oper
+    self.anni_() + self.comm_() + self.eras() + self.dref() + self.oper()
   }
 
-  fn has_redex(&self) -> bool {
-    self.redexes.len() > 0
-  }
-
-  pub(crate) fn get_next_redex(&mut self) -> Option<Redex> {
-    // self.rx_redex.recv().ok()
+  pub(crate) fn pop_redex(&self) -> Option<Redex> {
     self.redexes.pop()
   }
 
+  /// NOTE: Must be called while no other thread is pushing/popping redexes
   pub fn peek_current_redexes(&self) -> Vec<Redex> {
-    // let redexes: Vec<_> = self.rx_redex.try_iter().collect();
-    // for r in redexes.clone() {
-    //   self.tx_redex.send(r).unwrap();
-    // }
-    // redexes
-    self.redexes.clone()
+    let mut r = Vec::with_capacity(self.redexes.len());
+    while let Some(redex) = self.pop_redex() {
+      r.push(redex);
+    }
+    for redex in r.iter() {
+      self.push_redex(*redex);
+    }
+    r
   }
 
-  pub(crate) fn put_redex(&mut self, r: Redex) {
-    // self.tx_redex.send(r).unwrap();
+  pub(crate) fn push_redex(&self, r: Redex) {
+    // self.tx_redex_next_frame.send(r).unwrap();
     self.redexes.push(r);
   }
 }
