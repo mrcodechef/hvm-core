@@ -7,7 +7,7 @@
 // they interact with nodes, and are cleared when they interact with ERAs, allowing for constant
 // space evaluation of recursive functions on Scott encoded datatypes.
 
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::{mpsc::{Sender, Receiver, channel}, Mutex};
 
 pub type Val = u32;
 
@@ -83,9 +83,9 @@ pub const P2: Port = 1;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Ptr(pub Val);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct Heap {
-  data: Vec<(Ptr, Ptr)>,
+  data: Vec<Mutex<(Ptr, Ptr)>>,
   next: usize,
   used: usize,
   full: bool,
@@ -257,7 +257,7 @@ impl Book {
 impl Heap {
   pub fn new(size: usize) -> Heap {
     Heap {
-      data: vec![(NULL, NULL); size],
+      data: (0 .. size).map(|_| Mutex::new((NULL, NULL))).collect(),
       next: 0,
       used: 0,
       full: false,
@@ -283,25 +283,21 @@ impl Heap {
 
   #[inline(always)]
   pub fn get(&self, index: Val, port: Port) -> Ptr {
-    unsafe {
-      let node = self.data.get_unchecked(index as usize);
-      if port == P1 {
-        return node.0;
-      } else {
-        return node.1;
-      }
+    let node = unsafe { self.data.get_unchecked(index as usize) }.lock().unwrap();
+    if port == P1 {
+      node.0
+    } else {
+      node.1
     }
   }
 
   #[inline(always)]
   pub fn set(&mut self, index: Val, port: Port, value: Ptr) {
-    unsafe {
-      let node = self.data.get_unchecked_mut(index as usize);
-      if port == P1 {
-        node.0 = value;
-      } else {
-        node.1 = value;
-      }
+    let mut node = unsafe { self.data.get_unchecked_mut(index as usize) }.lock().unwrap();
+    if port == P1 {
+      node.0 = value;
+    } else {
+      node.1 = value;
     }
   }
 
@@ -317,24 +313,18 @@ impl Heap {
 
   #[inline(always)]
   pub fn compact(&self) -> Vec<(Ptr, Ptr)> {
-    let mut node = vec![];
+    let mut nodes = vec![];
     loop {
-      let p1 = self.data[node.len()].0;
-      let p2 = self.data[node.len()].1;
+      let node = self.data[nodes.len()].lock().unwrap();
+      let p1 = node.0;
+      let p2 = node.1;
       if p1 != NULL || p2 != NULL {
-        node.push((p1, p2));
+        nodes.push((p1, p2));
       } else {
         break;
       }
     }
-    return node;
-  }
-
-  fn extend_one(&mut self, p1: Ptr, p2: Ptr) -> Val {
-    // TODO: maybe do both lines atomically?
-    let index = self.data.len() as Val;
-    self.data.push((p1, p2));
-    index
+    return nodes;
   }
 }
 
@@ -649,14 +639,15 @@ impl Net {
     // FIXME: change "while" to "if" once lang prevents refs from returning refs
     while root.is_ref() {
       // Load the closed net.
+      // TODO: Remove clone
       let mut def_net = unsafe { book.defs.get_unchecked((root.val() as usize) & 0xFFFFFF) }.clone();
       if def_net.node.len() == 0 {
         continue;
       }
 
-
       // TODO: Reuse Vec between calls (thread-local memory)
-      let mut locs = vec![parent.val()];
+      let mut locs = Vec::with_capacity(def_net.node.len());
+      locs.push(parent.val());
       locs.extend(
         def_net.node.iter()
           .skip(1) // skip root
@@ -669,7 +660,6 @@ impl Net {
         }
       };
 
-
       // Adjust all nodes
       (_, root) = def_net.node[0];
       adjust_ptr(&mut root);
@@ -678,17 +668,18 @@ impl Net {
         adjust_ptr(p2);
       }
 
-      // Load nodes and redexes
-      for (loc, (p1, p2)) in locs.clone().into_iter().skip(1).zip(&def_net.node[1..]) {
-        self.heap.set(loc, P1, *p1);
-        self.heap.set(loc, P2, *p2);
-      }
       for (a, b) in &def_net.rdex {
         let mut a = *a;
         let mut b = *b;
         adjust_ptr(&mut a);
         adjust_ptr(&mut b);
         self.put_redex((a, b));
+      }
+
+      // Load nodes and redexes
+      for (loc, (p1, p2)) in locs.into_iter().skip(1).zip(&def_net.node[1..]) {
+        self.heap.set(loc, P1, *p1);
+        self.heap.set(loc, P2, *p2);
       }
     }
     return root;
