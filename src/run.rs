@@ -679,13 +679,22 @@ impl Net {
       }
 
       // Load nodes and redexes
-      for (loc, (p1, p2)) in locs.into_iter().skip(1).zip(&def_net.node[1..]) {
+      for (loc, (p1, p2)) in locs.clone().into_iter().skip(1).zip(&def_net.node[1..]) {
+        // if p1.val() == locs[0] {
+        //   self.set_target(*p1, Ptr::new(p1.tag(), loc));
+        // }
+        // if p2.val() == locs[0] {
+        //   self.set_target(*p2, Ptr::new(p2.tag(), loc));
+        // }
         self.heap.set(loc, P1, *p1);
         self.heap.set(loc, P2, *p2);
       }
       for (a, b) in &def_net.rdex {
         self.put_redex((*a, *b));
       }
+      // if root.is_var() {
+      //   self.set_target(parent, root);
+      // }
     }
     return root;
   }

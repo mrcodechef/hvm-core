@@ -1,3 +1,4 @@
+use hvmc::run::{self, Ptr, Tag::VR2};
 use insta::{assert_debug_snapshot, assert_snapshot};
 use loaders::*;
 
@@ -82,9 +83,13 @@ fn test_deref() {
   ", 16);
   assert_eq!(net.heap.compact().len(), 1);
 
-  net.expand(&book, net.heap.get_root());
+  net.expand(&book, run::ROOT);
 
   assert_eq!(net.heap.compact().len(), 3);
-  let redexes = net.peek_current_redexes();
-  assert_eq!(redexes.len(), 1);
+  assert_eq!(net.peek_current_redexes().len(), 1);
+
+  net.expand(&book, Ptr::new(VR2, 1));
+
+  assert_eq!(net.heap.compact().len(), 5);
+  assert_eq!(net.peek_current_redexes().len(), 2);
 }
