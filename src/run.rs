@@ -43,7 +43,7 @@ pub enum Tag {
   CT5,
 }
 
-pub type NumericOp = u8;
+pub type NumericOp = u32;
 
 // Numeric operations.
 pub const ADD: NumericOp = 0x1; // addition
@@ -55,12 +55,14 @@ pub const EQ : NumericOp = 0x6; // equal-to
 pub const NE : NumericOp = 0x7; // not-equal-to
 pub const LT : NumericOp = 0x8; // less-than
 pub const GT : NumericOp = 0x9; // greater-than
-pub const AND: NumericOp = 0xA; // bitwise-and
-pub const OR : NumericOp = 0xB; // bitwise-or
-pub const XOR: NumericOp = 0xC; // bitwise-xor
-pub const NOT: NumericOp = 0xD; // bitwise-not
+pub const AND: NumericOp = 0xA; // logical-and
+pub const OR : NumericOp = 0xB; // logical-or
+pub const XOR: NumericOp = 0xC; // logical-xor
+pub const NOT: NumericOp = 0xD; // logical-not
 pub const LSH: NumericOp = 0xE; // left-shift
 pub const RSH: NumericOp = 0xF; // right-shift
+pub const FIB: NumericOp = 0x10;
+pub const FIB2: NumericOp = 0x11;
 
 // Root address
 pub const ROOT_PORT: Val = 0 + P2;
@@ -572,7 +574,7 @@ impl Net {
         self.oper += 1;
         let f = self.heap.get(p2.val() + P1);
         let res = self.prim(f.val(), b.val(), p1.val());
-        self.link(self.heap.get(p2.val() + P2), Ptr::new(NUM, res));
+        self.link(self.heap.get(p2.val() + P2), res);
         self.heap.free(a.val());
         self.heap.free(p2.val());
       } else {
@@ -590,6 +592,11 @@ impl Net {
 
   pub fn op1n(&mut self, a: Ptr, b: Ptr) {
     // Converts `a` from OP1 into OP2, storing NUM `b` in port 2.
+    // Reusing the OP2 node type to do both the first and the third step of the numeric operation
+    //  is only possible if we're sure that the second node of the operation will always be at the second port.
+    // If we were to do something like dinamically selecting the called function through higher-order functions,
+    //  this wouldn't hold anymore and we would need a third node type.
+    // Of course this is still possible by encapsulating the numeric function with lambdas, but that has an overhead.
     self.oper += 1;
     let p1 = self.heap.get(a.val() + P1);
     let p2 = self.heap.get(a.val() + P2);
@@ -599,7 +606,7 @@ impl Net {
       self.oper += 1;
       let f = self.heap.get(p2.val() + P1);
       let res = self.prim(f.val(), p1.val(), b.val());
-      self.link(self.heap.get(p2.val() + P2), Ptr::new(NUM, res));
+      self.link(self.heap.get(p2.val() + P2), res);
       self.heap.free(a.val());
       self.heap.free(p2.val());
     } else {
@@ -617,33 +624,90 @@ impl Net {
     let v2 = self.heap.get(a.val() + P2).val();
     let f = self.heap.get(b.val() + P1).val();
     let res = self.prim(f, v1, v2);
-    self.link(self.heap.get(b.val() + P2), Ptr::new(NUM, res));
+    self.link(self.heap.get(b.val() + P2), res);
     self.heap.free(a.val());
     self.heap.free(b.val());
   }
 
-  pub fn prim(&mut self, f: Val, a: Val, b: Val) -> Val {
-    let a_val = a & 0xFFFFFF;
-    let b_val = b & 0xFFFFFF;
-    match f as u8 {
-      ADD => { (a_val.wrapping_add(b_val)) & 0xFFFFFF }
-      SUB => { (a_val.wrapping_sub(b_val)) & 0xFFFFFF }
-      MUL => { (a_val.wrapping_mul(b_val)) & 0xFFFFFF }
-      DIV if b_val == 0 => { 0xFFFFFF }
-      DIV => { (a_val.wrapping_div(b_val)) & 0xFFFFFF }
-      MOD => { (a_val.wrapping_rem(b_val)) & 0xFFFFFF }
-      EQ  => { ((a_val == b_val) as Val) & 0xFFFFFF }
-      NE  => { ((a_val != b_val) as Val) & 0xFFFFFF }
-      LT  => { ((a_val < b_val) as Val) & 0xFFFFFF }
-      GT  => { ((a_val > b_val) as Val) & 0xFFFFFF }
-      AND => { (a_val & b_val) & 0xFFFFFF }
-      OR  => { (a_val | b_val) & 0xFFFFFF }
-      XOR => { (a_val ^ b_val) & 0xFFFFFF }
-      NOT => { (!b_val) & 0xFFFFFF }
-      LSH => { (a_val << b_val) & 0xFFFFFF }
-      RSH => { (a_val >> b_val) & 0xFFFFFF }
+  pub fn prim(&mut self, f: Val, a: Val, b: Val) -> Ptr {
+    let a = a & 0xFFFFFF;
+    let b = b & 0xFFFFFF;
+    match f {
+      ADD => { Ptr::new(NUM, (a.wrapping_add(b)) & 0xFFFFFF) }
+      SUB => { Ptr::new(NUM, (a.wrapping_sub(b)) & 0xFFFFFF) }
+      MUL => { Ptr::new(NUM, (a.wrapping_mul(b)) & 0xFFFFFF) }
+      DIV => { Ptr::new(NUM, (a.wrapping_div(b)) & 0xFFFFFF) }
+      MOD => { Ptr::new(NUM, (a.wrapping_rem(b)) & 0xFFFFFF) }
+      EQ  => { Ptr::new(NUM, ((a == b) as Val) & 0xFFFFFF) }
+      NE  => { Ptr::new(NUM, ((a != b) as Val) & 0xFFFFFF) }
+      LT  => { Ptr::new(NUM, ((a < b) as Val) & 0xFFFFFF) }
+      GT  => { Ptr::new(NUM, ((a > b) as Val) & 0xFFFFFF) }
+      AND => { Ptr::new(NUM, (a & b) & 0xFFFFFF) }
+      OR  => { Ptr::new(NUM, (a | b) & 0xFFFFFF) }
+      XOR => { Ptr::new(NUM, (a ^ b) & 0xFFFFFF) }
+      NOT => { Ptr::new(NUM, (!b) & 0xFFFFFF) }
+      LSH => { Ptr::new(NUM, (a << b) & 0xFFFFFF) }
+      RSH => { Ptr::new(NUM, (a >> b) & 0xFFFFFF) }
+      FIB => { self.fib(a) }
+      FIB2 => { self.fib2(a) }
       _   => { unreachable!() }
     }
+  }
+
+  fn fib(&mut self, a: Val) -> Ptr {
+    /*
+      let t = λa λb a
+      for _ in 0..n {
+        t = λa λb (t b (+ a b))
+      }
+      return t
+     */
+    // t = λa λb a
+    // in tree syntax:
+    //   (a (* a))
+    let loc = self.heap.alloc(2*2);
+    let mut t = Ptr::new(CT0, loc+0);
+    self.heap.set(loc+0+P1, Ptr::new(VAR, loc+2+P2));
+    self.heap.set(loc+0+P2, Ptr::new(CT0, loc+2));
+    self.heap.set(loc+2+P1, ERAS);
+    self.heap.set(loc+2+P2, Ptr::new(VAR, loc+0+P1));
+    for _ in 0..a {
+      // t = λa λb (t b (+ a b))
+      // in tree syntax:
+      //   (<a b> ({2 c a} d))
+      //   & t ~ (c (e d))
+      //   & #1 ~ <b e>
+      let loc = self.heap.alloc(7*2);
+      self.rdex.push((t, Ptr::new(CT0, loc+6)));
+      t = Ptr::new(CT0, loc+0);
+      // λa λb dup b1 b2 = b
+      self.heap.set(loc+0+P1, Ptr::new(OP2, loc+10));
+      self.heap.set(loc+0+P2, Ptr::new(CT0, loc+2));
+      self.heap.set(loc+2+P1, Ptr::new(CT2, loc+4));
+      self.heap.set(loc+2+P2, Ptr::new(VAR, loc+8+P2));
+      self.heap.set(loc+4+P1, Ptr::new(VAR, loc+6+P1));
+      self.heap.set(loc+4+P2, Ptr::new(VAR, loc+10+P1));
+      // (t b1 sum)
+      self.heap.set(loc+6+P1, Ptr::new(VAR, loc+4+P1));
+      self.heap.set(loc+6+P2, Ptr::new(CT0, loc+8));
+      self.heap.set(loc+8+P1, Ptr::new(VAR, loc+12+P2));
+      self.heap.set(loc+8+P2, Ptr::new(VAR, loc+2+P2));
+      // (+ a b2)
+      self.heap.set(loc+10+P1, Ptr::new(VAR, loc+4+P2));
+      self.heap.set(loc+10+P2, Ptr::new(OP1, loc+12)); // small optimization, prereduce second op2
+      self.heap.set(loc+12+P1, Ptr::new(NUM, ADD));
+      self.heap.set(loc+12+P2, Ptr::new(VAR, loc+8+P1));
+    }
+    t
+  }
+
+  fn fib2(&mut self, n: Val) -> Ptr {
+    let mut a = 0;
+    let mut b = 1;
+    for _ in 0..n {
+      (a, b) = (b, (a + b) & 0xFFFFFF);
+    }
+    Ptr::new(NUM, a)
   }
 
   pub fn mtch(&mut self, a: Ptr, b: Ptr) {
