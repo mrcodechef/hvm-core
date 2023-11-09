@@ -30,7 +30,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       let (book, mut net) = load(f_name);
       let start_time = std::time::Instant::now();
       net.expand(&book, run::ROOT);
-      net.normal(&book);
+      net.reduce(&book);
+      //net.normal(&book);
+      println!("{}", ast::show_runtime_net(&net));
 
       if args.len() >= 4 && args[3] == "-s" {
         println!("");

@@ -46,7 +46,7 @@ pub const NOT: Tag = 0xD; // logical-not
 pub const LSH: Tag = 0xE; // left-shift
 pub const RSH: Tag = 0xF; // right-shift
 
-pub const INIT: usize = 1 << 16;
+pub const INIT: usize = 1 << 12;
 pub const ERAS: Ptr   = Ptr::new(ERA, 0);
 pub const ROOT: Ptr   = Ptr::new(VR2, INIT as Val);
 pub const NULL: Ptr   = Ptr(0x0000_0000);
@@ -73,6 +73,7 @@ pub struct Heap {
 pub struct Net {
   pub rdex: Vec<(Ptr,Ptr)>, // redexes
   pub heap: Heap, // nodes
+  pub vars: Vec<Ptr>, // variables
   pub anni: usize, // anni rewrites
   pub comm: usize, // comm rewrites
   pub eras: usize, // eras rewrites
@@ -85,6 +86,7 @@ pub struct Net {
 pub struct Def {
   pub rdex: Vec<(Ptr, Ptr)>,
   pub node: Vec<(Ptr, Ptr)>,
+  pub easy: Vec<(Ptr, Ptr)>,
 }
 
 // A map of id to definitions (closed nets).
@@ -169,6 +171,16 @@ impl Ptr {
   }
 
   #[inline(always)]
+  pub fn is_nod(&self) -> bool {
+    return matches!(self.tag(), OP2..);
+  }
+
+  #[inline(always)]
+  pub fn is_new(&self) -> bool {
+    return self.has_loc() && self.val() < INIT as u32;
+  }
+
+  #[inline(always)]
   pub fn has_loc(&self) -> bool {
     return matches!(self.tag(), VR1..=VR2 | OP2..);
   }
@@ -214,6 +226,7 @@ impl Def {
     Def {
       rdex: vec![],
       node: vec![],
+      easy: vec![],
     }
   }
 }
@@ -235,6 +248,7 @@ impl Heap {
     } else if !self.full && self.next + size <= self.data.len() {
       self.used += size;
       self.next += size;
+      //println!("alloc {:08x}", self.next - size);
       return (self.next - size) as Val;
     } else {
       self.full = true;
@@ -316,6 +330,7 @@ impl Net {
     Net {
       rdex: vec![],
       heap: Heap::new(size),
+      vars: vec![NULL; 65536],
       anni: 0,
       comm: 0,
       eras: 0,
@@ -331,8 +346,10 @@ impl Net {
 
   // Converts to a def.
   pub fn to_def(self) -> Def {
+    //println!("to_def");
     let mut node = vec![];
     let mut rdex = vec![];
+    let mut easy = vec![];
     for i in 0 .. self.heap.data.len() {
       let p1 = self.heap.data[INIT + node.len()].0;
       let p2 = self.heap.data[INIT + node.len()].1;
@@ -342,12 +359,44 @@ impl Net {
         break;
       }
     }
+    use std::collections::HashMap;
+    let next = &mut 128;
+    let vars = &mut HashMap::new();
+    fn register(node: &mut Vec<(Ptr,Ptr)>, ptr: Ptr, next: &mut u32, vars: &mut HashMap<Ptr, u32>) {
+      if ptr != NULL && ptr.is_var() && vars.get(&ptr).is_none() {
+        let trg = if ptr.tag() == VR1 {
+          node[ptr.val() as usize].0
+        } else {
+          node[ptr.val() as usize].1
+        };
+        vars.insert(ptr, *next);
+        vars.insert(trg, *next);
+        *next += 1;
+      }
+    }
+    fn adjust(ptr: Ptr, vars: &HashMap<Ptr, u32>) -> Ptr {
+      if ptr != NULL && ptr.is_var() {
+        //println!("naming {:08x} as {:08x}", ptr.0, Ptr::new(VR2, *vars.get(&ptr).unwrap()).0);
+        return Ptr::new(VR2, *vars.get(&ptr).unwrap());
+      } else {
+        return ptr;
+      }
+    }
+    for i in 0 .. node.len() {
+      let p1 = node[i].0;
+      let p2 = node[i].1;
+      register(&mut node, p1, next, vars);
+      register(&mut node, p2, next, vars);
+    }
+    for i in 0 .. node.len() {
+      easy.push((adjust(node[i].0, vars), adjust(node[i].1, vars)));
+    }
     for i in 0 .. self.rdex.len() {
       let p1 = self.rdex[i].0;
       let p2 = self.rdex[i].1;
       rdex.push((p1.subtract(INIT as u32), p2.subtract(INIT as u32)));
     }
-    return Def { rdex, node };
+    return Def { rdex, node, easy };
   }
 
   // Reads back from a def.
@@ -396,15 +445,20 @@ impl Net {
 
   // Performs an interaction over a redex.
   pub fn interact(&mut self, book: &Book, a: Ptr, b: Ptr) {
-    let mut a = a;
-    let mut b = b;
+    //println!("inter {:08x} {:08x}", a.0, b.0);
+    //let mut a = a;
+    //let mut b = b;
     // Dereference A
-    if a.is_ref() && b.is_pri() && !b.is_skp() {
-      a = self.deref(book, a, b);
-    } else if b.is_ref() && a.is_pri() && !a.is_skp() {
-      b = self.deref(book, b, a);
-    }
+    //if a.is_ref() && b.is_pri() && !b.is_skp() {
+      ////a = self.deref(book, a, b);
+      //return self.fast2(book, a, b);
+    //} else if b.is_ref() && a.is_pri() && !a.is_skp() {
+      ////b = self.deref(book, b, a);
+      //return self.fast2(book, b, a);
+    //}
     match (a.tag(), b.tag()) {
+      (REF   , OP2..) => self.call_ref(book, b, a),
+      (OP2.. , REF  ) => self.call_ref(book, a, b),
       (CT0.. , CT0..) if a.tag() == b.tag() => self.anni(a, b),
       (CT0.. , CT0..) => self.comm(a, b),
       (CT0.. , ERA  ) => self.era2(a),
@@ -443,12 +497,12 @@ impl Net {
     };
   }
 
-  pub fn conn(&mut self, a: Ptr, b: Ptr) {
-    self.anni += 1;
-    self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
-    self.heap.free(a.val());
-    self.heap.free(b.val());
-  }
+  //pub fn conn(&mut self, a: Ptr, b: Ptr) {
+    //self.anni += 1;
+    //self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
+    //self.heap.free(a.val());
+    //self.heap.free(b.val());
+  //}
 
   pub fn anni(&mut self, a: Ptr, b: Ptr) {
     self.anni += 1;
@@ -512,7 +566,6 @@ impl Net {
     self.link(self.heap.get(a.val(), P2), ERAS);
     self.heap.free(a.val());
   }
-
 
   pub fn op2n(&mut self, a: Ptr, b: Ptr) {
     self.oper += 1;
@@ -617,19 +670,19 @@ impl Net {
     if ptr.is_ref() {
       // Load the closed net.
       let got = unsafe { book.defs.get_unchecked((ptr.val() as usize) & 0xFFFFFF) };
-      if let Some(ret) = self.burn(&got, parent) {
-        return ret;
-      } else {
+      //if let Some(ret) = self.fast(&got, parent) {
+        //return ret;
+      //} else {
         if got.node.len() > 0 {
           let len = got.node.len() - 1;
           let loc = self.heap.alloc(len);
           // Load nodes, adjusted.
           for i in 0..len as Val {
             unsafe {
-              let p1 = got.node.get_unchecked(1 + i as usize).0.adjust(loc);
-              let p2 = got.node.get_unchecked(1 + i as usize).1.adjust(loc);
-              self.heap.set(loc + i, P1, p1);
-              self.heap.set(loc + i, P2, p2);
+              let p1 = got.node.get_unchecked(1 + i as usize).0;
+              let p2 = got.node.get_unchecked(1 + i as usize).1;
+              self.heap.set(loc + i, P1, p1.adjust(loc));
+              self.heap.set(loc + i, P2, p2.adjust(loc));
             }
           }
           // Load redexes, adjusted.
@@ -645,15 +698,166 @@ impl Net {
             self.set_target(ptr, parent);
           }
         }
-      }
+      //}
     }
     return ptr;
   }
 
   // Optimizations
-  pub fn burn(&mut self, def: &Def, x: Ptr) -> Option<Ptr> {
-    return None;
+  
+  #[inline(always)]
+  fn get_local(&self, def: &Def, ptr: Ptr) -> Ptr {
+    if ptr.is_new() {
+      if ptr.tag() == VR1 {
+        return def.easy[ptr.val() as usize].0;
+      } else {
+        return def.easy[ptr.val() as usize].1;
+      }
+    } else {
+      return self.get_target(ptr);
+    }
   }
+
+  #[inline(always)]
+  pub fn call_ref(&mut self, book: &Book, fun: Ptr, rff: Ptr) {
+    //println!("fast-deref");
+    self.dref += 1;
+    let def = unsafe { book.defs.get_unchecked((rff.val() as usize) & 0xFFFFFF) };
+    for (rx, ry) in &def.rdex {
+      self.apply(def, *rx, *ry);
+    }
+    self.apply(def, fun, def.easy[0].1);
+  }
+
+  #[inline(always)]
+  pub fn apply(&mut self, def: &Def, a: Ptr, b: Ptr) {
+    println!("apply {:08x} {:08x}", a.0, b.0);
+    pub const BACK : Ptr = Ptr::new(VR1, 0);
+    pub const ROOT : Ptr = Ptr::new(VR2, 0);
+    let mut a = a;
+    let mut b = b;
+    // (a1 a2) ~ (b1 b2)
+    // ----------------- FAST CON-CON
+    // a1 ~ b1
+    // a2 ~ b2
+    if a.tag() == CT0 && b.tag() == CT0 {
+      self.anni += 1;
+      println!("fast con-con");
+      self.apply(def, self.get_local(def, Ptr::new(VR1, a.val())), self.get_local(def, Ptr::new(VR1, b.val())));
+      self.apply(def, self.get_local(def, Ptr::new(VR2, a.val())), self.get_local(def, Ptr::new(VR2, b.val())));
+      return;
+    }
+    // #N ~ ?<(if_z (pred if_s)) R>
+    // ---------------------------- FAST NUM-MAT
+    // #(N-1) ~ pred
+    // if_s   ~ R
+    if a.is_num() && b.is_mat() {
+      //println!("num-mat {:08x} {:08x}", self.heap.get(b.val(),P1).0, self.heap.get(b.val(),P1).0);
+      let tp0 = self.get_local(def, Ptr::new(VR1, b.val()));
+      let ret = self.get_local(def, Ptr::new(VR2, b.val()));
+      if tp0.tag() == CT0 {
+        let ifz = self.get_local(def, Ptr::new(VR1, tp0.val()));
+        let tp1 = self.get_local(def, Ptr::new(VR2, tp0.val()));
+        if tp1.tag() == CT0 {
+          self.oper += 1;
+          let pre = self.get_local(def, Ptr::new(VR1, tp1.val()));
+          let ifs = self.get_local(def, Ptr::new(VR2, tp1.val()));
+          if a.val() == 0 {
+            println!("- fast num-mat =0 | ifz={:08x} ret={:08x}", ifz.0, ret.0);
+            self.subst(pre, ERAS);
+            self.subst(ifz, ERAS);
+            self.apply(def, ifz, ret);
+          } else {
+            println!("- fast num-mat >0");
+            self.subst(ifz, ERAS);
+            self.apply(def, Ptr::new(NUM, a.val() - 1), pre);
+            self.apply(def, ifs, ret);
+          }
+          return;
+        }
+      }
+    }
+    if a.is_new() && b.is_era()
+    || a.is_era() && b.is_new()
+    || a.is_skp() && b.is_era()
+    || a.is_era() && b.is_skp() {
+      //println!("- skip");
+      self.eras += 1;
+      return;
+    }
+    if a.is_new() {
+      //println!("- make A");
+      self.set_target(BACK, NULL);
+      self.make(def, a, BACK);
+      a = self.get_target(BACK);
+    }
+    if b.is_new() {
+      //println!("- make B");
+      self.set_target(BACK, NULL);
+      self.make(def, b, BACK);
+      b = self.get_target(BACK);
+    }
+    //println!("- link {:08x} {:08x}", a.0, b.0);
+    self.link(a, b);
+  }
+
+  #[inline(always)]
+  pub fn make(&mut self, def: &Def, ptr: Ptr, parent: Ptr) {
+    //println!("maker {:08x}", ptr.0);
+    if ptr.is_nod() {
+      //println!("nod");
+      let loc = self.heap.alloc(1);
+      let nod = unsafe { def.easy.get_unchecked(ptr.val() as usize) };
+      self.make(def, nod.0, Ptr::new(VR1, loc));
+      self.make(def, nod.1, Ptr::new(VR2, loc));
+      self.set_target(parent, Ptr::new(ptr.tag(), loc));
+    } else if ptr.is_var() {
+      self.subst(ptr, parent);
+    } else {
+      //println!("atom");
+      self.link(parent, ptr);
+    }
+  }
+
+  pub fn subst(&mut self, ptr: Ptr, parent: Ptr) {
+    println!("subst {:08x} {:08x}", ptr.0, parent.0);
+    let var = unsafe { self.vars.get_unchecked_mut(ptr.val() as usize) };
+    let trg = *var;
+    if trg == NULL {
+      //println!("- fst");
+      *var = parent;
+    } else {
+      //println!("- snd");
+      *var = NULL;
+      self.link(parent, trg);
+    }
+  }
+
+  //pub fn make(&mut self, def: &Def, ptr: Ptr, local_parent: Ptr, global_parent: Ptr) -> Ptr {
+    //let mut stack = vec![(ptr, local_parent, global_parent)];
+
+    //while let Some((ptr, local_parent, global_parent)) = stack.pop() {
+      //if ptr.is_nod() {
+        //let loc = self.heap.alloc(1);
+        //let nod = unsafe { def.node.get_unchecked(ptr.val() as usize) };
+        //stack.push((nod.0, Ptr::new(VR1, ptr.val()), Ptr::new(VR1, loc)));
+        //stack.push((nod.1, Ptr::new(VR2, ptr.val()), Ptr::new(VR2, loc)));
+      //} else if ptr.is_var() {
+        //let paired = self.get_target(local_parent);
+        //if paired == NULL {
+          //self.set_target(ptr, global_parent);
+        //} else {
+          //self.link(paired, global_parent);
+          //self.set_target(local_parent, NULL);
+        //}
+        //return paired;
+      //} else {
+        //return ptr;
+      //}
+    //}
+
+    //unreachable!();
+  //}
 
   // Reduces all redexes.
   pub fn reduce(&mut self, book: &Book) {
