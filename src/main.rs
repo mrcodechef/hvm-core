@@ -30,8 +30,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       let (book, mut net) = load(f_name);
       let start_time = std::time::Instant::now();
       net.expand(&book, run::ROOT);
-      net.reduce(&book);
-      //net.normal(&book);
+      //net.reduce(&book);
+      net.normal(&book);
       println!("{}", ast::show_runtime_net(&net));
 
       if args.len() >= 4 && args[3] == "-s" {
@@ -64,10 +64,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Load file and generate net
 fn load(file: &str) -> (run::Book, run::Net) {
-  let file = fs::read_to_string(file).unwrap();
-  let book = ast::book_to_runtime(&ast::do_parse_book(&file));
-  let mut net = run::Net::new(1 << 28);
+  let     file = fs::read_to_string(file).unwrap();
+  let mut book = ast::book_to_runtime(&ast::do_parse_book(&file));
+  let mut net  = run::Net::new(1 << 28);
   net.boot(ast::name_to_val("main"));
+
+  // FIXME: mess-refactor
+  let mut idx = 1;
+  fn adj(def: &run::Def, ptr: run::Ptr, add: u32) -> run::Ptr {
+    if ptr.is_var() {
+      let trg = if ptr.tag() == run::VR1 {
+        def.node[ptr.val() as usize].0
+      } else {
+        def.node[ptr.val() as usize].1
+      };
+      let ptr = ptr.adjust(add);
+      let trg = trg.adjust(add);
+      let id0 = 1 + (ptr.val() * 2) + ptr.tag() as u32;
+      let id1 = 1 + (trg.val() * 2) + trg.tag() as u32;
+      return run::Ptr::new(run::VR2, std::cmp::min(id0, id1));
+    } else {
+      return ptr.adjust(add);
+    }
+  }
+  for def in &mut book.defs {
+    let init = idx;
+    if def.node.len() > 0 {
+      def.root = adj(&def, def.node[0].1, init);
+      for i in 1 .. def.node.len() {
+        let (p1,p2) = &def.node[i];
+        net.heap.set(idx, run::P1, adj(&def, *p1, init));
+        net.heap.set(idx, run::P2, adj(&def, *p2, init));
+        idx += 1;
+      }
+      for (a,b) in &def.rdex {
+        def.rdx2.push((adj(&def, *a, init), adj(&def, *b, init)));
+      }
+    }
+  }
+
   return (book, net);
 }
 

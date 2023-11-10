@@ -84,9 +84,11 @@ pub struct Net {
 // A compact closed net, used for dereferences.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Def {
+  pub init: usize,
+  pub root: Ptr,
+  pub rdx2: Vec<(Ptr, Ptr)>,
   pub rdex: Vec<(Ptr, Ptr)>,
   pub node: Vec<(Ptr, Ptr)>,
-  pub easy: Vec<(Ptr, Ptr)>,
 }
 
 // A map of id to definitions (closed nets).
@@ -191,8 +193,23 @@ impl Ptr {
   }
 
   #[inline(always)]
-  pub fn subtract(&self, dif: Val) -> Ptr {
+  pub fn add(&self, dif: Val) -> Ptr {
+    return Ptr::new(self.tag(), self.val() + if *self != NULL && self.has_loc() { dif } else { 0 });
+  }
+
+  #[inline(always)]
+  pub fn sub(&self, dif: Val) -> Ptr {
     return Ptr::new(self.tag(), self.val() - if *self != NULL && self.has_loc() { dif } else { 0 });
+  }
+
+  #[inline(always)]
+  pub fn add2(&self, dif: Val) -> Ptr {
+    return Ptr::new(self.tag(), self.val() + if *self != NULL && !self.is_var() && self.has_loc() { dif } else { 0 });
+  }
+
+  #[inline(always)]
+  pub fn sub2(&self, dif: Val) -> Ptr {
+    return Ptr::new(self.tag(), self.val() - if *self != NULL && !self.is_var() && self.has_loc() { dif } else { 0 });
   }
 
   // Can this redex be skipped (as an optimization)?
@@ -224,9 +241,11 @@ impl Book {
 impl Def {
   pub fn new() -> Self {
     Def {
+      init: 0,
+      root: NULL,
+      rdx2: vec![],
       rdex: vec![],
       node: vec![],
-      easy: vec![],
     }
   }
 }
@@ -349,54 +368,21 @@ impl Net {
     //println!("to_def");
     let mut node = vec![];
     let mut rdex = vec![];
-    let mut easy = vec![];
     for i in 0 .. self.heap.data.len() {
       let p1 = self.heap.data[INIT + node.len()].0;
       let p2 = self.heap.data[INIT + node.len()].1;
       if p1 != NULL || p2 != NULL {
-        node.push((p1.subtract(INIT as u32), p2.subtract(INIT as u32)));
+        node.push((p1.sub(INIT as u32), p2.sub(INIT as u32)));
       } else {
         break;
       }
     }
-    use std::collections::HashMap;
-    let next = &mut 128;
-    let vars = &mut HashMap::new();
-    fn register(node: &mut Vec<(Ptr,Ptr)>, ptr: Ptr, next: &mut u32, vars: &mut HashMap<Ptr, u32>) {
-      if ptr != NULL && ptr.is_var() && vars.get(&ptr).is_none() {
-        let trg = if ptr.tag() == VR1 {
-          node[ptr.val() as usize].0
-        } else {
-          node[ptr.val() as usize].1
-        };
-        vars.insert(ptr, *next);
-        vars.insert(trg, *next);
-        *next += 1;
-      }
-    }
-    fn adjust(ptr: Ptr, vars: &HashMap<Ptr, u32>) -> Ptr {
-      if ptr != NULL && ptr.is_var() {
-        //println!("naming {:08x} as {:08x}", ptr.0, Ptr::new(VR2, *vars.get(&ptr).unwrap()).0);
-        return Ptr::new(VR2, *vars.get(&ptr).unwrap());
-      } else {
-        return ptr;
-      }
-    }
-    for i in 0 .. node.len() {
-      let p1 = node[i].0;
-      let p2 = node[i].1;
-      register(&mut node, p1, next, vars);
-      register(&mut node, p2, next, vars);
-    }
-    for i in 0 .. node.len() {
-      easy.push((adjust(node[i].0, vars), adjust(node[i].1, vars)));
-    }
     for i in 0 .. self.rdex.len() {
       let p1 = self.rdex[i].0;
       let p2 = self.rdex[i].1;
-      rdex.push((p1.subtract(INIT as u32), p2.subtract(INIT as u32)));
+      rdex.push((p1.sub(INIT as u32), p2.sub(INIT as u32)));
     }
-    return Def { rdex, node, easy };
+    return Def { init: 0, root: NULL, rdx2: vec![], rdex, node };
   }
 
   // Reads back from a def.
@@ -445,7 +431,7 @@ impl Net {
 
   // Performs an interaction over a redex.
   pub fn interact(&mut self, book: &Book, a: Ptr, b: Ptr) {
-    //println!("inter {:08x} {:08x}", a.0, b.0);
+    //println!("intr {} ~~ {}", self.show_tree(a), self.show_tree(b));
     //let mut a = a;
     //let mut b = b;
     // Dereference A
@@ -457,8 +443,8 @@ impl Net {
       //return self.fast2(book, b, a);
     //}
     match (a.tag(), b.tag()) {
-      (REF   , OP2..) => self.call_ref(book, b, a),
-      (OP2.. , REF  ) => self.call_ref(book, a, b),
+      (REF   , OP2..) => self.call(book, b, a),
+      (OP2.. , REF  ) => self.call(book, a, b),
       (CT0.. , CT0..) if a.tag() == b.tag() => self.anni(a, b),
       (CT0.. , CT0..) => self.comm(a, b),
       (CT0.. , ERA  ) => self.era2(a),
@@ -496,13 +482,6 @@ impl Net {
       _               => unreachable!(),
     };
   }
-
-  //pub fn conn(&mut self, a: Ptr, b: Ptr) {
-    //self.anni += 1;
-    //self.link(self.heap.get(a.val(), P2), self.heap.get(b.val(), P2));
-    //self.heap.free(a.val());
-    //self.heap.free(b.val());
-  //}
 
   pub fn anni(&mut self, a: Ptr, b: Ptr) {
     self.anni += 1;
@@ -662,6 +641,7 @@ impl Net {
   }
 
   // Expands a closed net.
+  // TODO: remove in favor of 'call'
   #[inline(always)]
   pub fn deref(&mut self, book: &Book, ptr: Ptr, parent: Ptr) -> Ptr {
     self.dref += 1;
@@ -670,194 +650,195 @@ impl Net {
     if ptr.is_ref() {
       // Load the closed net.
       let got = unsafe { book.defs.get_unchecked((ptr.val() as usize) & 0xFFFFFF) };
-      //if let Some(ret) = self.fast(&got, parent) {
-        //return ret;
-      //} else {
-        if got.node.len() > 0 {
-          let len = got.node.len() - 1;
-          let loc = self.heap.alloc(len);
-          // Load nodes, adjusted.
-          for i in 0..len as Val {
-            unsafe {
-              let p1 = got.node.get_unchecked(1 + i as usize).0;
-              let p2 = got.node.get_unchecked(1 + i as usize).1;
-              self.heap.set(loc + i, P1, p1.adjust(loc));
-              self.heap.set(loc + i, P2, p2.adjust(loc));
-            }
-          }
-          // Load redexes, adjusted.
-          for r in &got.rdex {
-            let p1 = r.0.adjust(loc);
-            let p2 = r.1.adjust(loc);
-            self.rdex.push((p1, p2));
-          }
-          // Load root, adjusted.
-          ptr = got.node[0].1.adjust(loc);
-          // Link root.
-          if ptr.is_var() {
-            self.set_target(ptr, parent);
+      if got.node.len() > 0 {
+        let len = got.node.len() - 1;
+        let loc = self.heap.alloc(len);
+        // Load nodes, adjusted.
+        for i in 0..len as Val {
+          unsafe {
+            let p1 = got.node.get_unchecked(1 + i as usize).0;
+            let p2 = got.node.get_unchecked(1 + i as usize).1;
+            self.heap.set(loc + i, P1, p1.adjust(loc));
+            self.heap.set(loc + i, P2, p2.adjust(loc));
           }
         }
-      //}
+        // Load redexes, adjusted.
+        for r in &got.rdex {
+          let p1 = r.0.adjust(loc);
+          let p2 = r.1.adjust(loc);
+          self.rdex.push((p1, p2));
+        }
+        // Load root, adjusted.
+        ptr = got.node[0].1.adjust(loc);
+        // Link root.
+        if ptr.is_var() {
+          self.set_target(ptr, parent);
+        }
+      }
     }
     return ptr;
   }
 
-  // Optimizations
-  
-  #[inline(always)]
-  fn get_local(&self, def: &Def, ptr: Ptr) -> Ptr {
-    if ptr.is_new() {
-      if ptr.tag() == VR1 {
-        return def.easy[ptr.val() as usize].0;
-      } else {
-        return def.easy[ptr.val() as usize].1;
-      }
-    } else {
-      return self.get_target(ptr);
-    }
-  }
-
-  #[inline(always)]
-  pub fn call_ref(&mut self, book: &Book, fun: Ptr, rff: Ptr) {
-    //println!("fast-deref");
+  pub fn call(&mut self, book: &Book, fun: Ptr, arg_ref: Ptr) {
+    //println!(":: CALL {}", crate::ast::val_to_name(arg_ref.val()));
     self.dref += 1;
-    let def = unsafe { book.defs.get_unchecked((rff.val() as usize) & 0xFFFFFF) };
-    for (rx, ry) in &def.rdex {
-      self.apply(def, *rx, *ry);
+    let def = unsafe { book.defs.get_unchecked((arg_ref.val() as usize) & 0xFFFFFF) };
+    self.burn(book, fun, def.root);
+    for (rx, ry) in &def.rdx2 {
+      self.burn(book, *rx, *ry);
     }
-    self.apply(def, fun, def.easy[0].1);
   }
 
-  #[inline(always)]
-  pub fn apply(&mut self, def: &Def, a: Ptr, b: Ptr) {
-    println!("apply {:08x} {:08x}", a.0, b.0);
-    pub const BACK : Ptr = Ptr::new(VR1, 0);
-    pub const ROOT : Ptr = Ptr::new(VR2, 0);
+  pub fn burn(&mut self, book: &Book, a: Ptr, b: Ptr) {
+    //println!("BURN");
+
+    let mut stack = [(NULL,NULL); 256]; // TODO: move out
+    let mut index = 0;
+
     let mut a = a;
     let mut b = b;
-    // (a1 a2) ~ (b1 b2)
-    // ----------------- FAST CON-CON
-    // a1 ~ b1
-    // a2 ~ b2
-    if a.tag() == CT0 && b.tag() == CT0 {
-      self.anni += 1;
-      println!("fast con-con");
-      self.apply(def, self.get_local(def, Ptr::new(VR1, a.val())), self.get_local(def, Ptr::new(VR1, b.val())));
-      self.apply(def, self.get_local(def, Ptr::new(VR2, a.val())), self.get_local(def, Ptr::new(VR2, b.val())));
-      return;
-    }
-    // #N ~ ?<(if_z (pred if_s)) R>
-    // ---------------------------- FAST NUM-MAT
-    // #(N-1) ~ pred
-    // if_s   ~ R
-    if a.is_num() && b.is_mat() {
-      //println!("num-mat {:08x} {:08x}", self.heap.get(b.val(),P1).0, self.heap.get(b.val(),P1).0);
-      let tp0 = self.get_local(def, Ptr::new(VR1, b.val()));
-      let ret = self.get_local(def, Ptr::new(VR2, b.val()));
-      if tp0.tag() == CT0 {
-        let ifz = self.get_local(def, Ptr::new(VR1, tp0.val()));
-        let tp1 = self.get_local(def, Ptr::new(VR2, tp0.val()));
-        if tp1.tag() == CT0 {
-          self.oper += 1;
-          let pre = self.get_local(def, Ptr::new(VR1, tp1.val()));
-          let ifs = self.get_local(def, Ptr::new(VR2, tp1.val()));
-          if a.val() == 0 {
-            println!("- fast num-mat =0 | ifz={:08x} ret={:08x}", ifz.0, ret.0);
-            self.subst(pre, ERAS);
-            self.subst(ifz, ERAS);
-            self.apply(def, ifz, ret);
-          } else {
-            println!("- fast num-mat >0");
-            self.subst(ifz, ERAS);
-            self.apply(def, Ptr::new(NUM, a.val() - 1), pre);
-            self.apply(def, ifs, ret);
+
+    loop {
+
+      // x <~ @foo
+      // ---------
+      // @foo <~ x
+      if !a.is_skp() && b.is_ref() {
+        self.dref += 1;
+        let def = unsafe { book.defs.get_unchecked((b.val() as usize) & 0xFFFFFF) };
+        for (rx, ry) in &def.rdx2 {
+          unsafe {
+            *stack.get_unchecked_mut(index) = (*rx, *ry);
+            index += 1;
           }
-          return;
         }
+        a = a;
+        b = def.root;
+        continue;
       }
+
+      // (#N R) <~ (?<(ifz ifs) r> r)
+      // ---------------------------- match: (λx(match x { 0: Z, 1+p: S }) n)
+      // if N == 0:
+      //   R <~ ifz
+      //   * <~ ifs
+      // else:
+      //   *          <~ ifz
+      //   (#(X-1) R) <~ ifs
+      if a.tag() == CT0 && b.tag() == CT0 {
+        let ap1 = self.heap.get(a.val(), P1);
+        let ap2 = self.heap.get(a.val(), P2);
+        let bp1 = self.heap.get(b.val(), P1);
+        let bp2 = self.heap.get(b.val(), P2);
+        if ap1.is_num() && bp1.is_mat() {
+          let cse = self.heap.get(bp1.val(), P1);
+          let ret = self.heap.get(bp1.val(), P2);
+          if cse.tag() == CT0 && bp2 == ret {
+            let ifz = self.get_target(Ptr::new(VR1, cse.val()));
+            let ifs = self.get_target(Ptr::new(VR2, cse.val()));
+            self.anni += 2;
+            self.oper += 1;
+            if ap1.val() == 0 {
+              self.heap.free(a.val());
+              if ifs.is_skp() {
+                self.eras += 1;
+              } else {
+                unsafe {
+                  *stack.get_unchecked_mut(index) = (ERAS, ifs);
+                  index += 1;
+                }
+              }
+              a = ap2;
+              b = ifz;
+              continue;
+            } else {
+              self.heap.set(a.val(), P1, Ptr::new(NUM, ap1.val() - 1));
+              if ifz.is_skp() {
+                self.eras += 1;
+              } else {
+                unsafe {
+                  *stack.get_unchecked_mut(index) = (ERAS, ifz);
+                  index += 1;
+                }
+              }
+              a = a;
+              b = ifs;
+              continue;
+            }
+          }
+        }
+        // (a1 a2) <~ (b1 b2)
+        // ------------------
+        // a1 <~ b1
+        // a2 <~ b2
+        self.anni += 1;
+        unsafe {
+          *stack.get_unchecked_mut(index) = (ap1, bp1);
+          index += 1;
+        }
+        a = ap2;
+        b = bp2;
+        continue;
+      }
+
+      b = self.make(a, b);
+
+      // @foo <- x
+      // ---------
+      // x <- @foo
+      if b != NULL && a.is_ref() && !b.is_skp() {
+        self.dref += 1;
+        let def = unsafe { book.defs.get_unchecked((a.val() as usize) & 0xFFFFFF) };
+        for (rx, ry) in &def.rdx2 {
+          unsafe {
+            *stack.get_unchecked_mut(index) = (*rx, *ry);
+            index += 1;
+          }
+        }
+        a = b;
+        b = def.root;
+        continue;
+      }
+
+      if b != NULL {
+        self.link(a, b);
+      }
+
+      if index > 0 {
+        index -= 1;
+        unsafe {
+          a = stack.get_unchecked(index).0;
+          b = stack.get_unchecked(index).1;
+        }
+      } else {
+        break;
+      }
+
     }
-    if a.is_new() && b.is_era()
-    || a.is_era() && b.is_new()
-    || a.is_skp() && b.is_era()
-    || a.is_era() && b.is_skp() {
-      //println!("- skip");
-      self.eras += 1;
-      return;
-    }
-    if a.is_new() {
-      //println!("- make A");
-      self.set_target(BACK, NULL);
-      self.make(def, a, BACK);
-      a = self.get_target(BACK);
-    }
-    if b.is_new() {
-      //println!("- make B");
-      self.set_target(BACK, NULL);
-      self.make(def, b, BACK);
-      b = self.get_target(BACK);
-    }
-    //println!("- link {:08x} {:08x}", a.0, b.0);
-    self.link(a, b);
   }
 
-  #[inline(always)]
-  pub fn make(&mut self, def: &Def, ptr: Ptr, parent: Ptr) {
-    //println!("maker {:08x}", ptr.0);
+  pub fn make(&mut self, parent: Ptr, ptr: Ptr) -> Ptr {
     if ptr.is_nod() {
-      //println!("nod");
       let loc = self.heap.alloc(1);
-      let nod = unsafe { def.easy.get_unchecked(ptr.val() as usize) };
-      self.make(def, nod.0, Ptr::new(VR1, loc));
-      self.make(def, nod.1, Ptr::new(VR2, loc));
-      self.set_target(parent, Ptr::new(ptr.tag(), loc));
+      let p1  = self.make(Ptr::new(VR1, loc), self.heap.get(ptr.val(), P1));
+      let p2  = self.make(Ptr::new(VR2, loc), self.heap.get(ptr.val(), P2));
+      if p1 != NULL { self.link(Ptr::new(VR1, loc), p1); }
+      if p2 != NULL { self.link(Ptr::new(VR2, loc), p2); }
+      return Ptr::new(ptr.tag(), loc);
     } else if ptr.is_var() {
-      self.subst(ptr, parent);
+      let var = unsafe { self.vars.get_unchecked_mut(ptr.val() as usize) };
+      let trg = *var;
+      if trg == NULL {
+        *var = parent;
+        return NULL;
+      } else {
+        *var = NULL;
+        return trg;
+      }
     } else {
-      //println!("atom");
-      self.link(parent, ptr);
+      return ptr;
     }
   }
-
-  pub fn subst(&mut self, ptr: Ptr, parent: Ptr) {
-    println!("subst {:08x} {:08x}", ptr.0, parent.0);
-    let var = unsafe { self.vars.get_unchecked_mut(ptr.val() as usize) };
-    let trg = *var;
-    if trg == NULL {
-      //println!("- fst");
-      *var = parent;
-    } else {
-      //println!("- snd");
-      *var = NULL;
-      self.link(parent, trg);
-    }
-  }
-
-  //pub fn make(&mut self, def: &Def, ptr: Ptr, local_parent: Ptr, global_parent: Ptr) -> Ptr {
-    //let mut stack = vec![(ptr, local_parent, global_parent)];
-
-    //while let Some((ptr, local_parent, global_parent)) = stack.pop() {
-      //if ptr.is_nod() {
-        //let loc = self.heap.alloc(1);
-        //let nod = unsafe { def.node.get_unchecked(ptr.val() as usize) };
-        //stack.push((nod.0, Ptr::new(VR1, ptr.val()), Ptr::new(VR1, loc)));
-        //stack.push((nod.1, Ptr::new(VR2, ptr.val()), Ptr::new(VR2, loc)));
-      //} else if ptr.is_var() {
-        //let paired = self.get_target(local_parent);
-        //if paired == NULL {
-          //self.set_target(ptr, global_parent);
-        //} else {
-          //self.link(paired, global_parent);
-          //self.set_target(local_parent, NULL);
-        //}
-        //return paired;
-      //} else {
-        //return ptr;
-      //}
-    //}
-
-    //unreachable!();
-  //}
 
   // Reduces all redexes.
   pub fn reduce(&mut self, book: &Book) {
@@ -897,5 +878,28 @@ impl Net {
   pub fn rewrites(&self) -> usize {
     return self.anni + self.comm + self.eras + self.dref + self.oper;
   }
+
+  // Stringifies a ptr all the way to its variables
+  pub fn show_tree(&mut self, ptr: Ptr) -> String {
+    let ret = match ptr.tag() {
+      VR1 => { format!("x{:07x}", ptr.val()) }
+      VR2 => { format!("y{:07x}", ptr.val()) }
+      ERA => { "*".to_string() }
+      OP1 => { format!("<{} {}>", self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+      OP2 => { format!("<{} {}>", self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+      NUM => { format!("#{}", ptr.val()) }
+      MAT => { format!("?<{} {}>", self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+      REF => { format!("@{}", crate::ast::val_to_name(ptr.val())) }
+      CT0 => { format!("({} {})", self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+      CT1 => { format!("[{} {}]", self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+      _   => { format!("{{{} {} {}}}", ptr.tag() - CT0, self.show_tree(self.get_target(Ptr::new(VR1, ptr.val()))), self.show_tree(self.get_target(Ptr::new(VR2, ptr.val())))) }
+    };
+    if ptr.is_new() {
+      return format!("{{{}}}", ret);
+    } else {
+      return ret;
+    }
+  }
+
 
 }
