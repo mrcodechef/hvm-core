@@ -145,7 +145,7 @@ impl Ptr {
 
   #[inline(always)]
   pub fn is_var(&self) -> bool {
-    return matches!(self.tag(), VR1..=VR2);
+    return matches!(self.tag(), VR1..=VR2) && !self.is_nil();
   }
 
   #[inline(always)]
@@ -301,10 +301,7 @@ impl<'a> Heap<'a> {
       let node = self.data.get_unchecked(index as usize);
       let data = if port == P1 { &node.0.0 } else { &node.1.0 };
       let done = data.compare_exchange_weak(expected.0, value.0, Ordering::Relaxed, Ordering::Relaxed);
-      match done {
-        Ok (done) => Ok(Ptr(done)),
-        Err(done) => Ok(Ptr(done)),
-      }
+      return done.map(Ptr).map_err(Ptr);
     }
   }
 
@@ -618,138 +615,101 @@ impl<'a> Net<'a> {
   }
 
   pub fn era1(&mut self, a: Ptr) {
-    todo!()
-    //self.rwts.eras += 1;
-    //self.link(self.heap.get(a.val(), P2), ERAS);
-    //self.free(a.val());
+    self.rwts.eras += 1;
+    let a2 = Ptr::new(VR2, a.val());
+    self.atomic_link_1(a2, ERAS);
   }
 
   pub fn pass(&mut self, a: Ptr, b: Ptr) {
-    todo!()
-    //self.rwts.comm += 1;
-    //let loc0 = self.alloc(1);
-    //let loc1 = self.alloc(1);
-    //let loc2 = self.alloc(1);
-    //self.link(self.heap.get(a.val(), P2), Ptr::new(b.tag(), loc0));
-    //self.link(self.heap.get(b.val(), P1), Ptr::new(a.tag(), loc1));
-    //self.link(self.heap.get(b.val(), P2), Ptr::new(a.tag(), loc2));
-    //self.heap.set(loc0, P1, Ptr::new(VR2, loc1));
-    //self.heap.set(loc0, P2, Ptr::new(VR2, loc2));
-    //self.heap.set(loc1, P1, self.heap.get(a.val(), P1));
-    //self.heap.set(loc1, P2, Ptr::new(VR1, loc0));
-    //self.heap.set(loc2, P1, self.heap.get(a.val(), P1));
-    //self.heap.set(loc2, P2, Ptr::new(VR2, loc0));
-    //self.free(a.val());
-    //self.free(b.val());
+    self.rwts.comm += 1;
+    let loc0 = self.alloc(1);
+    let loc1 = self.alloc(1);
+    let loc2 = self.alloc(1);
+    let a2 = Ptr::new(VR2, a.val());
+    self.atomic_link_1(a2, Ptr::new(b.tag(), loc0));
+    let b1 = Ptr::new(VR1, b.val());
+    self.atomic_link_1(b1, Ptr::new(a.tag(), loc1));
+    let b2 = Ptr::new(VR2, b.val());
+    self.atomic_link_1(b2, Ptr::new(a.tag(), loc2));
+    self.heap.set(loc0, P1, Ptr::new(VR2, loc1));
+    self.heap.set(loc0, P2, Ptr::new(VR2, loc2));
+    self.heap.set(loc1, P1, self.heap.get(a.val(), P1));
+    self.heap.set(loc1, P2, Ptr::new(VR1, loc0));
+    self.heap.set(loc2, P1, self.heap.get(a.val(), P1));
+    self.heap.set(loc2, P2, Ptr::new(VR2, loc0));
   }
 
   pub fn copy(&mut self, a: Ptr, b: Ptr) {
-    todo!()
-    //self.rwts.comm += 1;
-    //self.link(self.heap.get(a.val(), P1), b);
-    //self.link(self.heap.get(a.val(), P2), b);
-    //self.free(a.val());
+    self.rwts.comm += 1;
+    let a1 = Ptr::new(VR1, a.val());
+    self.atomic_link_1(a1, b);
+    let a2 = Ptr::new(VR2, a.val());
+    self.atomic_link_1(a2, b);
+  }
+
+  pub fn mtch(&mut self, a: Ptr, b: Ptr) {
+    self.rwts.oper += 1;
+    let a1 = Ptr::new(VR1, a.val()); // branch
+    let a2 = Ptr::new(VR1, a.val()); // return
+    if b.val() == 0 {
+      let loc0 = self.alloc(1);
+      self.heap.set(loc0, P2, ERAS);
+      self.atomic_link_1(a1, Ptr::new(CT0, loc0));
+      self.atomic_link_1(a2, Ptr::new(VR1, loc0));
+    } else {
+      let loc0 = self.alloc(1);
+      let loc1 = self.alloc(1);
+      self.heap.set(loc0, P1, ERAS);
+      self.heap.set(loc0, P2, Ptr::new(CT0, loc1));
+      self.heap.set(loc1, P1, Ptr::new(NUM, b.val() - 1));
+      self.atomic_link_1(a1, Ptr::new(CT0, loc0));
+      self.atomic_link_1(a2, Ptr::new(VR2, loc1));
+    }
   }
 
   pub fn op2n(&mut self, a: Ptr, b: Ptr) {
-    todo!()
-    //self.rwts.oper += 1;
-    //let mut p1 = self.heap.get(a.val(), P1);
-    //// Optimization: perform chained ops at once
-    //if p1.is_num() {
-      //let mut rt = b.val();
-      //let mut p2 = self.heap.get(a.val(), P2);
-      //loop {
-        //self.rwts.oper += 1;
-        //rt = self.op(rt, p1.val());
-        //// If P2 is OP2, keep looping
-        //if p2.is_op2() {
-          //p1 = self.heap.get(p2.val(), P1);
-          //if p1.is_num() {
-            //p2 = self.heap.get(p2.val(), P2);
-            //self.rwts.oper += 1; // since OP1 is skipped
-            //continue;
-          //}
-        //}
-        //// If P2 is OP1, flip args and keep looping
-        //if p2.is_op1() {
-          //let tmp = rt;
-          //rt = self.heap.get(p2.val(), P1).val();
-          //p1 = Ptr::new(NUM, tmp);
-          //p2 = self.heap.get(p2.val(), P2);
-          //continue;
-        //}
-        //break;
-      //}
-      //self.link(Ptr::new(NUM, rt), p2);
-      //return;
-    //}
-    //self.heap.set(a.val(), P1, b);
-    //self.link(Ptr::new(OP1, a.val()), p1);
+    self.rwts.oper += 1;
+    let a1 = Ptr::new(VR1, a.val());
+    self.atomic_link_1(a1, Ptr::new(OP1, a.val()));
+    self.heap.set(a.val(), P1, b);
   }
 
   pub fn op1n(&mut self, a: Ptr, b: Ptr) {
-    todo!()
-    //self.rwts.oper += 1;
-    //let p1 = self.heap.get(a.val(), P1);
-    //let p2 = self.heap.get(a.val(), P2);
-    //let v0 = p1.val() as Val;
-    //let v1 = b.val() as Val;
-    //let v2 = self.op(v0, v1);
-    //self.link(Ptr::new(NUM, v2), p2);
-    //self.free(a.val());
+    self.rwts.oper += 1;
+    let v0 = self.heap.get(a.val(), P1).val() as Val;
+    let v1 = b.val() as Val;
+    let v2 = self.op(v0, v1);
+    let a2 = Ptr::new(VR2, a.val());
+    self.atomic_link_1(a2, Ptr::new(NUM, v2));
   }
 
   #[inline(always)]
   pub fn op(&self, a: Val, b: Val) -> Val {
-    todo!()
-    //let a_opr = (a >> 24) & 0xF;
-    //let b_opr = (b >> 24) & 0xF; // not used yet
-    //let a_val = a & 0xFFFFFF;
-    //let b_val = b & 0xFFFFFF;
-    //match a_opr as Tag {
-      //USE => { ((a_val & 0xF) << 24) | b_val }
-      //ADD => { (a_val.wrapping_add(b_val)) & 0xFFFFFF }
-      //SUB => { (a_val.wrapping_sub(b_val)) & 0xFFFFFF }
-      //MUL => { (a_val.wrapping_mul(b_val)) & 0xFFFFFF }
-      //DIV => { if b_val == 0 { 0xFFFFFF } else { (a_val.wrapping_div(b_val)) & 0xFFFFFF } }
-      //MOD => { (a_val.wrapping_rem(b_val)) & 0xFFFFFF }
-      //EQ  => { ((a_val == b_val) as Val) & 0xFFFFFF }
-      //NE  => { ((a_val != b_val) as Val) & 0xFFFFFF }
-      //LT  => { ((a_val < b_val) as Val) & 0xFFFFFF }
-      //GT  => { ((a_val > b_val) as Val) & 0xFFFFFF }
-      //AND => { (a_val & b_val) & 0xFFFFFF }
-      //OR  => { (a_val | b_val) & 0xFFFFFF }
-      //XOR => { (a_val ^ b_val) & 0xFFFFFF }
-      //NOT => { (!b_val) & 0xFFFFFF }
-      //LSH => { (a_val << b_val) & 0xFFFFFF }
-      //RSH => { (a_val >> b_val) & 0xFFFFFF }
-      //_   => { unreachable!() }
-    //}
+    let a_opr = (a >> 24) & 0xF;
+    let b_opr = (b >> 24) & 0xF; // not used yet
+    let a_val = a & 0xFFFFFF;
+    let b_val = b & 0xFFFFFF;
+    match a_opr as Tag {
+      USE => { ((a_val & 0xF) << 24) | b_val }
+      ADD => { (a_val.wrapping_add(b_val)) & 0xFFFFFF }
+      SUB => { (a_val.wrapping_sub(b_val)) & 0xFFFFFF }
+      MUL => { (a_val.wrapping_mul(b_val)) & 0xFFFFFF }
+      DIV => { if b_val == 0 { 0xFFFFFF } else { (a_val.wrapping_div(b_val)) & 0xFFFFFF } }
+      MOD => { (a_val.wrapping_rem(b_val)) & 0xFFFFFF }
+      EQ  => { ((a_val == b_val) as Val) & 0xFFFFFF }
+      NE  => { ((a_val != b_val) as Val) & 0xFFFFFF }
+      LT  => { ((a_val < b_val) as Val) & 0xFFFFFF }
+      GT  => { ((a_val > b_val) as Val) & 0xFFFFFF }
+      AND => { (a_val & b_val) & 0xFFFFFF }
+      OR  => { (a_val | b_val) & 0xFFFFFF }
+      XOR => { (a_val ^ b_val) & 0xFFFFFF }
+      NOT => { (!b_val) & 0xFFFFFF }
+      LSH => { (a_val << b_val) & 0xFFFFFF }
+      RSH => { (a_val >> b_val) & 0xFFFFFF }
+      _   => { unreachable!() }
+    }
   }
 
-  pub fn mtch(&mut self, a: Ptr, b: Ptr) {
-    todo!()
-    //self.rwts.oper += 1;
-    //let p1 = self.heap.get(a.val(), P1); // branch
-    //let p2 = self.heap.get(a.val(), P2); // return
-    //if b.val() == 0 {
-      //let loc0 = self.alloc(1);
-      //self.heap.set(loc0, P2, ERAS);
-      //self.link(p1, Ptr::new(CT0, loc0));
-      //self.link(p2, Ptr::new(VR1, loc0));
-      //self.free(a.val());
-    //} else {
-      //let loc0 = self.alloc(1);
-      //let loc1 = self.alloc(1);
-      //self.heap.set(loc0, P1, ERAS);
-      //self.heap.set(loc0, P2, Ptr::new(CT0, loc1));
-      //self.heap.set(loc1, P1, Ptr::new(NUM, b.val() - 1));
-      //self.link(p1, Ptr::new(CT0, loc0));
-      //self.link(p2, Ptr::new(VR2, loc1));
-      //self.free(a.val());
-    //}
-  }
 
   // Expands a closed net.
   #[inline(always)]
