@@ -52,6 +52,7 @@ pub const RSH: Tag = 0xF; // right-shift
 pub const ERAS: Ptr   = Ptr::new(ERA, 0);
 pub const ROOT: Ptr   = Ptr::new(VR2, 0);
 pub const NULL: Ptr   = Ptr(0x0000_0000_0000_0000);
+pub const GONE: Ptr   = Ptr(0xFFFF_FFFF_FFFF_FFFE);
 pub const LOCK: Ptr   = Ptr(0xFFFF_FFFF_FFFF_FFFF); // if last digit is F it will be seen as a CTR
 
 // An auxiliary port.
@@ -144,8 +145,13 @@ impl Ptr {
   }
 
   #[inline(always)]
+  pub fn is_tkn(&self) -> bool {
+    return self.0 == NULL.0 || self.0 == LOCK.0 || self.0 == GONE.0;
+  }
+
+  #[inline(always)]
   pub fn is_var(&self) -> bool {
-    return matches!(self.tag(), VR1..=VR2) && !self.is_nil();
+    return matches!(self.tag(), VR1..=VR2); // FIXME: interferes with NULL
   }
 
   #[inline(always)]
@@ -155,7 +161,7 @@ impl Ptr {
 
   #[inline(always)]
   pub fn is_ctr(&self) -> bool {
-    return matches!(self.tag(), CT0..=CT4);
+    return matches!(self.tag(), CT0..); // FIXME: interferes with LOCK/GONE (other fns below too)
   }
 
   #[inline(always)]
