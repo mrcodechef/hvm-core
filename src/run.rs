@@ -19,17 +19,18 @@ pub const VR1: Tag = 0x0; // Variable to aux port 1
 pub const VR2: Tag = 0x1; // Variable to aux port 2
 pub const RD1: Tag = 0x2; // Redirect to aux port 1
 pub const RD2: Tag = 0x3; // Redirect to aux port 2
-pub const REF: Tag = 0x4; // Lazy closed net
-pub const ERA: Tag = 0x5; // Unboxed eraser
-pub const NUM: Tag = 0x6; // Unboxed number
-pub const OP2: Tag = 0x7; // Binary numeric operation
-pub const OP1: Tag = 0x8; // Unary numeric operation
-pub const MAT: Tag = 0x9; // Numeric pattern-matching
-pub const CT0: Tag = 0xA; // Main port of con node, label 0
-pub const CT1: Tag = 0xB; // Main port of con node, label 1
-pub const CT2: Tag = 0xC; // Main port of con node, label 2
-pub const CT3: Tag = 0xD; // Main port of con node, label 3
-pub const CT4: Tag = 0xE; // Main port of con node, label 4
+pub const TKN: Tag = 0x4; // Special tokens
+pub const REF: Tag = 0x5; // Lazy closed net
+pub const ERA: Tag = 0x6; // Unboxed eraser
+pub const NUM: Tag = 0x7; // Unboxed number
+pub const OP2: Tag = 0x8; // Binary numeric operation
+pub const OP1: Tag = 0x9; // Unary numeric operation
+pub const MAT: Tag = 0xA; // Numeric pattern-matching
+pub const CT0: Tag = 0xB; // Main port of con node, label 0
+pub const CT1: Tag = 0xC; // Main port of con node, label 1
+pub const CT2: Tag = 0xD; // Main port of con node, label 2
+pub const CT3: Tag = 0xE; // Main port of con node, label 3
+pub const CT4: Tag = 0xF; // Main port of con node, label 4
 
 // Numeric operations.
 pub const USE: Tag = 0x0; // set-next-op
@@ -49,11 +50,11 @@ pub const NOT: Tag = 0xD; // logical-not
 pub const LSH: Tag = 0xE; // left-shift
 pub const RSH: Tag = 0xF; // right-shift
 
-pub const ERAS: Ptr   = Ptr::new(ERA, 0);
-pub const ROOT: Ptr   = Ptr::new(VR2, 0);
-pub const NULL: Ptr   = Ptr(0x0000_0000_0000_0000);
-pub const GONE: Ptr   = Ptr(0xFFFF_FFFF_FFFF_FFFE);
-pub const LOCK: Ptr   = Ptr(0xFFFF_FFFF_FFFF_FFFF); // if last digit is F it will be seen as a CTR
+pub const NULL: Ptr = Ptr(0);
+pub const ERAS: Ptr = Ptr::new(ERA, 0);
+pub const ROOT: Ptr = Ptr::new(VR2, 0);
+pub const GONE: Ptr = Ptr::new(TKN, 0);
+pub const LOCK: Ptr = Ptr::new(TKN, 1);
 
 // An auxiliary port.
 pub type Port = Val;
@@ -61,7 +62,7 @@ pub const P1: Port = 0;
 pub const P2: Port = 1;
 
 // A tagged pointer.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
 pub struct Ptr(pub Val);
 
 // An atomic tagged pointer.
@@ -96,7 +97,7 @@ pub struct AtomicRewrites {
 // A interaction combinator net.
 pub struct Net<'a> {
   pub tid : usize, // thread id
-  pub tlen: usize, // thread count
+  pub tids: usize, // thread count
   pub heap: Heap<'a>, // nodes
   pub rdex: Vec<(Ptr,Ptr)>, // redexes
   pub locs: Vec<Val>,
@@ -141,17 +142,17 @@ impl Ptr {
 
   #[inline(always)]
   pub fn is_nil(&self) -> bool {
-    return self.data() == 0;
-  }
-
-  #[inline(always)]
-  pub fn is_tkn(&self) -> bool {
-    return self.0 == NULL.0 || self.0 == LOCK.0 || self.0 == GONE.0;
+    return self.data() == NULL.0;
   }
 
   #[inline(always)]
   pub fn is_var(&self) -> bool {
-    return matches!(self.tag(), VR1..=VR2); // FIXME: interferes with NULL
+    return matches!(self.tag(), VR1..=VR2) && !self.is_nil();
+  }
+
+  #[inline(always)]
+  pub fn is_red(&self) -> bool {
+    return matches!(self.tag(), RD1..=RD2);
   }
 
   #[inline(always)]
@@ -161,7 +162,7 @@ impl Ptr {
 
   #[inline(always)]
   pub fn is_ctr(&self) -> bool {
-    return matches!(self.tag(), CT0..); // FIXME: interferes with LOCK/GONE (other fns below too)
+    return matches!(self.tag(), CT0..);
   }
 
   #[inline(always)]
@@ -209,10 +210,15 @@ impl Ptr {
     return matches!(self.tag(), VR1..=VR2 | OP2..);
   }
 
-  //#[inline(always)]
-  //pub fn adjust(&self, loc: Val) -> Ptr {
-    //return Ptr::new(self.tag(), self.val() + if self.has_loc() { loc - 1 } else { 0 });
-  //}
+  #[inline(always)]
+  pub fn redirect(&self) -> Ptr {
+    return Ptr::new(self.tag() + RD2 - VR2, self.val());
+  }
+
+  #[inline(always)]
+  pub fn unredirect(&self) -> Ptr {
+    return Ptr::new(self.tag() + RD2 - VR2, self.val());
+  }
 
   // Can this redex be skipped (as an optimization)?
   #[inline(always)]
@@ -311,6 +317,7 @@ impl<'a> Heap<'a> {
     }
   }
 
+  #[inline(always)]
   pub fn swap(&self, index: Val, port: Port, value: Ptr) -> Ptr {
     unsafe {
       let node = self.data.get_unchecked(index as usize);
@@ -376,7 +383,7 @@ impl<'a> Net<'a> {
   pub fn new(data: &'a Data) -> Self {
     Net {
       tid : 0,
-      tlen: 1,
+      tids: 1,
       heap: Heap { data },
       rdex: vec![],
       locs: vec![0; 1 << 16],
@@ -385,27 +392,6 @@ impl<'a> Net<'a> {
       next: 0,
       rwts: Rewrites::new(),
     }
-  }
-
-  // Forks into child threads, returning a Net for the (tid/tlen)'th thread.
-  pub fn fork(&self, tid: usize, tlen: usize) -> Self {
-    let mut net = Net::new(self.heap.data);
-    net.tid  = tid;
-    net.tlen = tlen;
-    net.init = self.heap.data.len() * tid / tlen;
-    net.area = self.heap.data.len() / tlen;
-    let from = self.rdex.len() * (tid + 0) / tlen;
-    let upto = self.rdex.len() * (tid + 1) / tlen;
-    for i in from .. upto {
-      let r = self.rdex[i];
-      let x = r.0;
-      let y = r.1;
-      net.rdex.push((x,y));
-    }
-    if tid == 0 {
-      net.next = self.next;
-    }
-    return net;
   }
 
   // Creates a net and boots from a REF.
@@ -437,10 +423,11 @@ impl<'a> Net<'a> {
     }
   }
 
+  // TODO: remove (not necessary since link clears the memory)
   #[inline(always)]
   pub fn free(&self, index: Val) {
-    unsafe { self.heap.data.get_unchecked(index as usize) }.0.store(NULL);
-    unsafe { self.heap.data.get_unchecked(index as usize) }.1.store(NULL);
+    //unsafe { self.heap.data.get_unchecked(index as usize) }.0.store(NULL);
+    //unsafe { self.heap.data.get_unchecked(index as usize) }.1.store(NULL);
   }
 
   // Gets a pointer's target.
@@ -457,8 +444,14 @@ impl<'a> Net<'a> {
 
   // Takes a pointer's target.
   #[inline(always)]
-  pub fn take_target(&self, ptr: Ptr) -> Ptr {
-    self.heap.swap(ptr.val(), ptr.0 & 1, LOCK)
+  pub fn swap_target(&self, ptr: Ptr, value: Ptr) -> Ptr {
+    self.heap.swap(ptr.val(), ptr.0 & 1, value)
+  }
+
+  // Sets a pointer's target, using CAS.
+  #[inline(always)]
+  pub fn cas_target(&self, ptr: Ptr, expected: Ptr, value: Ptr) -> Result<Ptr,Ptr> {
+    self.heap.cas(ptr.val(), ptr.0 & 1, expected, value)
   }
 
   #[inline(always)]
@@ -472,59 +465,143 @@ impl<'a> Net<'a> {
   
   // Links two pointers, forming a new wire.
   pub fn link(&mut self, a: Ptr, b: Ptr) {
-    // Creates redex A-B
     if a.is_pri() && b.is_pri() {
       return self.redux(a, b);
-    }
-    // Substitutes A
-    if a.is_var() {
-      //self.heap.cas(a.val(), a.0 & 1, a, b);
-      //println!("{:08x} == {:08x} | {}", self.get_target(a).0, a.0, self.get_target(a).0 == a.0);
-      self.set_target(a, b);
-    }
-    // Substitutes B
-    if b.is_var() {
-      //self.heap.cas(b.val(), b.0 & 1, b, a);
-      //println!("{:08x} == {:08x} | {}", self.get_target(b).0, b.0, self.get_target(b).0 == b.0);
-      self.set_target(b, a);
+    } else {
+      if a.is_var() { self.set_target(a, b); }
+      if b.is_var() { self.set_target(b, a); }
     }
   }
 
-  // TODO: continue...
+  // Given two locations, links both stored pointers, atomically.
   pub fn atomic_link(&mut self, a_dir: Ptr, b_dir: Ptr) {
     //println!("link {:016x} {:016x}", a_dir.0, b_dir.0);
-    let a = self.take_target(a_dir);
-    let b = self.take_target(b_dir);
-    // Creates redex A-B
-    if a.is_pri() && b.is_pri() {
-      return self.redux(a, b);
+    let a_ptr = self.swap_target(a_dir, LOCK);
+    let b_ptr = self.swap_target(b_dir, LOCK);
+    if a_ptr.is_pri() && b_ptr.is_pri() {
+      self.set_target(a_dir, NULL);
+      self.set_target(b_dir, NULL);
+      return self.redux(a_ptr, b_ptr);
+    } else {
+      self.atomic_linker(a_ptr, a_dir, b_ptr);
+      self.atomic_linker(b_ptr, b_dir, a_ptr);
     }
-    // Substitutes A
-    if a.is_var() {
-      if self.heap.cas(a.val(), a.0 & 1, a_dir, b).is_err() {
-        todo!()
-      }
+  }
+
+  // Given a location, link the pointer stored to another pointer, atomically.
+  pub fn atomic_link_1(&mut self, a_dir: Ptr, b_ptr: Ptr) {
+    let a_ptr = self.swap_target(a_dir, LOCK);
+    if a_ptr.is_pri() {
+      self.set_target(a_dir, NULL);
+      return self.redux(a_ptr, b_ptr);
+    } else {
+      self.atomic_linker(a_ptr, a_dir, b_ptr);
     }
-    // Substitutes B
-    if b.is_var() {
-      if self.heap.cas(b.val(), b.0 & 1, b_dir, a).is_err() {
-        todo!();
+  }
+
+  // When two threads interfere, uses the lock-free link algorithm described on the 'paper/'.
+  pub fn atomic_linker(&mut self, a_ptr: Ptr, a_dir: Ptr, b_ptr: Ptr) {
+    // If 'a_ptr' is a var...
+    if a_ptr.is_var() {
+      let got = self.cas_target(a_ptr, a_dir, b_ptr);
+      // Attempts to link using a compare-and-swap.
+      if got.is_ok() {
+        self.set_target(a_dir, NULL);
+      // If the CAS failed, resolve by using redirections.
+      } else {
+        //println!("[{:04x}] cas fail {:016x}", self.tid, got.unwrap_err().0);
+        if b_ptr.is_var() {
+          self.set_target(a_dir, b_ptr.redirect());
+          //self.atomic_linker_var(a_ptr, a_dir, b_ptr);
+        } else if b_ptr.is_pri() {
+          self.set_target(a_dir, b_ptr);
+          self.atomic_linker_pri(a_ptr, a_dir, b_ptr);
+        } else {
+          todo!();
+        }
       }
     }
   }
 
-  // TODO: continue...
-  pub fn atomic_link_1(&mut self, a_dir: Ptr, b: Ptr) {
-    let a = self.take_target(a_dir);
-    // Creates redex A-B
-    if a.is_pri() {
-      return self.redux(a, b);
-    }
-    // Substitutes A
-    if a.is_var() {
-      if self.heap.cas(a.val(), a.0 & 1, a_dir, b).is_err() {
-        todo!()
+  // Atomic linker for when 'b_ptr' is a principal port.
+  pub fn atomic_linker_pri(&mut self, mut a_ptr: Ptr, a_dir: Ptr, b_ptr: Ptr) {
+    loop {
+      // Peek the target, which may not be owned by us.
+      let mut t_dir = a_ptr;
+      let mut t_ptr = self.get_target(t_dir);
+      // If target is a redirection, we own it. Clear and move forward.
+      if t_ptr.is_red() {
+        self.set_target(t_dir, NULL);
+        a_ptr = t_ptr;
+        continue;
       }
+      // If target is a variable, we don't own it. Try replacing it.
+      if t_ptr.is_var() {
+        if self.cas_target(t_dir, t_ptr, b_ptr).is_ok() {
+          //println!("[{:04x}] var", self.tid);
+          // Clear source location.
+          self.set_target(a_dir, NULL);
+          // Collect the orphaned backward path.
+          t_dir = t_ptr;
+          t_ptr = self.get_target(t_ptr);
+          while t_ptr.is_red() {
+            self.swap_target(t_dir, NULL);
+            t_dir = t_ptr;
+            t_ptr = self.get_target(t_dir);
+          }
+          return;
+        }
+        // If the CAS failed, the var changed, so we try again.
+        continue;
+      }
+      // If it is a node, two threads will reach this branch.
+      if t_ptr.is_pri() || t_ptr == GONE {
+        // Sort references, to avoid deadlocks.
+        let x_dir = if a_dir < t_dir { a_dir } else { t_dir };
+        let y_dir = if a_dir < t_dir { t_dir } else { a_dir };
+        // Swap first reference by GONE placeholder.
+        let x_ptr = self.swap_target(x_dir, GONE);
+        // First to arrive creates a redex.
+        if x_ptr != GONE {
+          //println!("[{:04x}] fst {:016x}", self.tid, x_ptr.0);
+          let y_ptr = self.swap_target(y_dir, GONE);
+          self.redux(x_ptr, y_ptr);
+          return;
+        // Second to arrive clears up the memory.
+        } else {
+          //println!("[{:04x}] snd", self.tid);
+          self.swap_target(x_dir, NULL);
+          while self.cas_target(y_dir, GONE, NULL).is_err() {};
+          return;
+        }
+      }
+      // If it is taken, we wait.
+      if t_ptr == LOCK {
+        continue;
+      }
+      // Shouldn't be reached.
+      //println!("[{:04x}] {:016x} | {:016x} {:016x} {:016x}", self.tid, t_ptr.0, a_dir.0, a_ptr.0, b_ptr.0);
+      unreachable!()
+    }
+  }
+
+  // Atomic linker for when 'b_ptr' is an aux port.
+  pub fn atomic_linker_var(&mut self, a_ptr: Ptr, a_dir: Ptr, b_ptr: Ptr) {
+    loop {
+      let ste_dir = b_ptr;
+      let ste_ptr = self.get_target(ste_dir);
+      if ste_ptr.is_var() {
+        let trg_dir = ste_ptr;
+        let trg_ptr = self.get_target(trg_dir);
+        if trg_ptr.is_red() {
+          let neo_ptr = trg_ptr.unredirect();
+          if self.cas_target(ste_dir, ste_ptr, neo_ptr).is_ok() {
+            self.swap_target(trg_dir, NULL);
+            continue;
+          }
+        }
+      }
+      break;
     }
   }
 
@@ -542,10 +619,6 @@ impl<'a> Net<'a> {
       (REF   , ERA  ) => self.rwts.eras += 1,
       (ERA   , REF  ) => self.rwts.eras += 1,
       (ERA   , ERA  ) => self.rwts.eras += 1,
-      //(VR1   , _    ) => self.link(a, b),
-      //(VR2   , _    ) => self.link(a, b),
-      //(_     , VR1  ) => self.link(b, a),
-      //(_     , VR2  ) => self.link(b, a),
       (CT0.. , NUM  ) => self.copy(a, b),
       (NUM   , CT0..) => self.copy(b, a),
       (NUM   , ERA  ) => self.rwts.eras += 1,
@@ -591,14 +664,6 @@ impl<'a> Net<'a> {
     let loc1 = self.alloc(1);
     let loc2 = self.alloc(1);
     let loc3 = self.alloc(1);
-    let a1 = Ptr::new(VR1, a.val());
-    self.atomic_link_1(a1, Ptr::new(b.tag(), loc0));
-    let b1 = Ptr::new(VR1, b.val());
-    self.atomic_link_1(b1, Ptr::new(a.tag(), loc2));
-    let a2 = Ptr::new(VR2, a.val());
-    self.atomic_link_1(a2, Ptr::new(b.tag(), loc1));
-    let b2 = Ptr::new(VR2, b.val());
-    self.atomic_link_1(b2, Ptr::new(a.tag(), loc3));
     self.heap.set(loc0, P1, Ptr::new(VR1, loc2));
     self.heap.set(loc0, P2, Ptr::new(VR1, loc3));
     self.heap.set(loc1, P1, Ptr::new(VR2, loc2));
@@ -607,6 +672,14 @@ impl<'a> Net<'a> {
     self.heap.set(loc2, P2, Ptr::new(VR1, loc1));
     self.heap.set(loc3, P1, Ptr::new(VR2, loc0));
     self.heap.set(loc3, P2, Ptr::new(VR2, loc1));
+    let a1 = Ptr::new(VR1, a.val());
+    self.atomic_link_1(a1, Ptr::new(b.tag(), loc0));
+    let b1 = Ptr::new(VR1, b.val());
+    self.atomic_link_1(b1, Ptr::new(a.tag(), loc2));
+    let a2 = Ptr::new(VR2, a.val());
+    self.atomic_link_1(a2, Ptr::new(b.tag(), loc1));
+    let b2 = Ptr::new(VR2, b.val());
+    self.atomic_link_1(b2, Ptr::new(a.tag(), loc3));
     self.free(a.val());
     self.free(b.val());
   }
@@ -716,7 +789,6 @@ impl<'a> Net<'a> {
     }
   }
 
-
   // Expands a closed net.
   #[inline(always)]
   pub fn call(&mut self, book: &Book, ptr: Ptr, par: Ptr) {
@@ -768,16 +840,24 @@ impl<'a> Net<'a> {
 
   // Reduces all redexes.
   #[inline(always)]
-  pub fn reduce(&mut self, book: &Book) {
+  pub fn reduce(&mut self, book: &Book, limit: usize) -> usize {
     let mut rdex: Vec<(Ptr, Ptr)> = vec![];
     std::mem::swap(&mut self.rdex, &mut rdex);
+    //println!("[{:04x}] tid reduce", tid);
+    let mut count = 0;
     while rdex.len() > 0 {
+      count += rdex.len();
       for (a, b) in &rdex {
         self.interact(book, *a, *b);
       }
       rdex.clear();
-      std::mem::swap(&mut self.rdex, &mut rdex);
+      if count < limit {
+        std::mem::swap(&mut self.rdex, &mut rdex);
+      } else {
+        break;
+      }
     }
+    return count;
   }
 
   // Expands heads.
@@ -787,52 +867,67 @@ impl<'a> Net<'a> {
       //println!("[{:04x}] expand dir: {:016x}", net.tid, dir.0);
       let ptr = net.get_target(dir);
       if ptr.is_ctr() {
-        if len >= net.tlen || key % 2 == 0 {
+        if len >= net.tids || key % 2 == 0 {
           go(net, book, Ptr::new(VR1, ptr.val()), len * 2, key / 2);
         }
-        if len >= net.tlen || key % 2 == 1 {
+        if len >= net.tids || key % 2 == 1 {
           go(net, book, Ptr::new(VR2, ptr.val()), len * 2, key / 2);
         }
       } else if ptr.is_ref() {
-        let got = net.take_target(dir);
-        if got != LOCK {
+        let got = net.swap_target(dir, LOCK);
+        if got == ptr {
           //println!("[{:08x}] expand {:08x}", net.tid, dir.0);
-          net.call(book, ptr, dir);
+          net.call(book, got, dir);
         }
       }
     }
     return go(self, book, ROOT, 1, self.tid);
   }
 
-  // Reduce a net to normal form.
-  //pub fn normal(&mut self, book: &Book) {
-    //self.expand(book);
-    //while self.rdex.len() > 0 {
-      //self.reduce(book);
-      //self.expand(book);
-    //}
-  //}
+  // Forks into child threads, returning a Net for the (tid/tids)'th thread.
+  pub fn fork(&self, tid: usize, tids: usize) -> Self {
+    let mut net = Net::new(self.heap.data);
+    net.tid  = tid;
+    net.tids = tids;
+    net.init = self.heap.data.len() * tid / tids;
+    net.area = self.heap.data.len() / tids;
+    let from = self.rdex.len() * (tid + 0) / tids;
+    let upto = self.rdex.len() * (tid + 1) / tids;
+    for i in from .. upto {
+      let r = self.rdex[i];
+      let x = r.0;
+      let y = r.1;
+      net.rdex.push((x,y));
+    }
+    if tid == 0 {
+      net.next = self.next;
+    }
+    return net;
+  }
 
+  // FIXME: if it is too big, boom.hvmc fails (NULL reached on atomic_link)
+  // FIXME: seems like redexes aren't shared much on boom, why? -- sequential at end?
   pub fn normal(&mut self, book: &Book) {
-    let tlen_l2 = 3;
-    let tlen    = 1 << tlen_l2;
+    let tids_l2 = 3;
+    let tids    = 1 << tids_l2;
 
-    const STLEN : usize = 65536; // max steal redexes / split 
+    const STLEN : usize = 1 << 20; // max steal redexes / split 
+    const LIMIT : usize = 1 << 20;
 
     // Global values
     let delta = AtomicRewrites::new(); // delta rewrite counter
     let steal = &mut vec![]; // steal buffer for redex exchange
     let rlens = &mut vec![]; // length of each tid's redex bags
     let total = AtomicUsize::new(0); // sum of redex bag length
-    let barry = Arc::new(Barrier::new(tlen)); // global barrier
+    let barry = Arc::new(Barrier::new(tids)); // global barrier
 
     // Initializes the rlens buffer
-    for i in 0 .. tlen {
+    for i in 0 .. tids {
       rlens.push(AtomicUsize::new(0x4321_FFFF_FFFF_FFFF));
     }
     
     // Initializes the steal buffer
-    for i in 0 .. STLEN * tlen {
+    for i in 0 .. STLEN * tids {
       steal.push((AtomicU64::new(0x1234_FFFF_FFFF_FFFF), AtomicU64::new(0x1234_FFFF_FFFF_FFFF)));
     }
 
@@ -840,7 +935,7 @@ impl<'a> Net<'a> {
     std::thread::scope(|s| {
 
       // For each thread...
-      for tid in 0 .. tlen {
+      for tid in 0 .. tids {
 
         // Creates thread local attributes
         let     delta = &delta;
@@ -850,7 +945,7 @@ impl<'a> Net<'a> {
         let     barry = Arc::clone(&barry);
         let mut tick  = 0;
         //let mut rbuff = vec![];
-        let mut child = self.fork(tid, tlen);
+        let mut child = self.fork(tid, tids);
 
         // Spawns the thread
         s.spawn(move || {
@@ -861,10 +956,9 @@ impl<'a> Net<'a> {
             // Synchronizes threads
             barry.wait();
 
-            //println!("[{:08x}] reducing {}", tid, child.rdex.len());
-
             // Rewrites current redexes
-            child.reduce(book);
+            let count = child.reduce(book, LIMIT);
+            //println!("[{:08x}] reduced {}", tid, count);
 
             // Expands if redex count is 0
             rlens[tid].store(child.rdex.len(), Ordering::Relaxed);
@@ -888,8 +982,8 @@ impl<'a> Net<'a> {
             total.store(0, Ordering::Relaxed);
 
             // Shares redexes with target thread
-            let side  = (child.tid >> (tlen_l2 - 1 - (tick % tlen_l2))) & 1;
-            let shift = (1 << (tlen_l2 - 1)) >> (tick % tlen_l2);
+            let side  = (child.tid >> (tids_l2 - 1 - (tick % tids_l2))) & 1;
+            let shift = (1 << (tids_l2 - 1)) >> (tick % tids_l2);
             let b_tid = if side == 1 { child.tid - shift } else { child.tid + shift };
             let a_len = child.rdex.len();
             let b_len = rlens[b_tid].load(Ordering::Relaxed);
@@ -926,4 +1020,63 @@ impl<'a> Net<'a> {
     println!("ALL DONE");
 
   }
+
+  // Reduce a net to normal form.
+  pub fn normal_seq(&mut self, book: &Book) {
+    self.expand(book);
+    while self.rdex.len() > 0 {
+      self.reduce(book, usize::MAX);
+      self.expand(book);
+    }
+  }
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
