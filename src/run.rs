@@ -715,7 +715,7 @@ impl<'a> Net<'a> {
     self.heap.set(loc2, P2, Ptr::new(VR1, 0, loc1));
     self.heap.set(loc3, P1, Ptr::new(VR2, 0, loc0));
     self.heap.set(loc3, P2, Ptr::new(VR2, 0, loc1));
-    let a1 = Ptr::new(VR1, 0, a.loc());
+        let a1 = Ptr::new(VR1, 0, a.loc());
     self.half_atomic_link(a1, Ptr::new(b.tag(), b.lab(), loc0));
     let b1 = Ptr::new(VR1, 0, b.loc());
     self.half_atomic_link(b1, Ptr::new(a.tag(), a.lab(), loc2));
@@ -937,7 +937,7 @@ impl<'a> Net<'a> {
     let from = self.rdex.len() * (tid + 0) / tids;
     let upto = self.rdex.len() * (tid + 1) / tids;
     for i in from .. upto {
-      net.rdex.push((self.rdex[i].0, self.rdex[i].1));
+      net.rdex.push(self.rdex[i]);
     }
     if tid == 0 {
       net.next = self.next;
@@ -963,7 +963,7 @@ impl<'a> Net<'a> {
       share: &'a Vec<(APtr, APtr)>, // global share buffer
       rlens: &'a Vec<AtomicUsize>, // global redex lengths
       total: &'a AtomicUsize, // total redex length
-      barry: Arc<Barrier>, // synchronization barrier
+      barry: &'a Barrier, // synchronization barrier
     }
 
     // Initialize global objects
@@ -974,7 +974,7 @@ impl<'a> Net<'a> {
     let rlens = (0..tids).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>();
     let share = (0..SHARE_LIMIT*tids).map(|_| (APtr(AtomicU64::new(0)), APtr(AtomicU64::new(0)))).collect::<Vec<_>>();
     let total = AtomicUsize::new(0); // sum of redex bag length
-    let barry = Arc::new(Barrier::new(tids)); // global barrier
+    let barry = Barrier::new(tids); // global barrier
 
     // Perform parallel reductions
     std::thread::scope(|s| {
@@ -990,10 +990,15 @@ impl<'a> Net<'a> {
           share: &share,
           rlens: &rlens,
           total: &total,
-          barry: Arc::clone(&barry),
+          barry: &barry,
         };
         s.spawn(move || {
-          main(&mut ctx)
+          loop {
+            reduce(&mut ctx);
+            ctx.net.expand(ctx.book);
+            if count(&mut ctx) == 0 { break; }
+          }
+          ctx.net.rwts.add_to(ctx.delta);
         });
       }
     });
@@ -1001,17 +1006,6 @@ impl<'a> Net<'a> {
     // Clear redexes and sum stats
     self.rdex.clear();
     delta.add_to(&mut self.rwts);
-
-    // Main reduction loop
-    #[inline(always)]
-    fn main(ctx: &mut ThreadContext) {
-      loop {
-        reduce(ctx);
-        expand(ctx);
-        if count(ctx) == 0 { break; }
-      }
-      ctx.net.rwts.add_to(ctx.delta);
-    }
 
     // Reduce redexes locally, then share with target
     #[inline(always)]
@@ -1026,12 +1020,6 @@ impl<'a> Net<'a> {
         split(ctx, tlog2);
         ctx.tick += 1;
       }
-    }
-
-    // Expand head refs
-    #[inline(always)]
-    fn expand(ctx: &mut ThreadContext) {
-      ctx.net.expand(ctx.book);
     }
 
     // Count total redexes (and populate 'rlens')
