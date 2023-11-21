@@ -161,8 +161,10 @@ pub fn parse_tree(chars: &mut Peekable<Chars>) -> Result<Tree, String> {
     }
     Some('?') => {
       chars.next();
+      consume(chars, "<")?;
       let sel = Box::new(parse_tree(chars)?);
       let ret = Box::new(parse_tree(chars)?);
+      consume(chars, ">")?;
       Ok(Tree::Mat { sel, ret })
     }
     _ => {
@@ -254,7 +256,7 @@ pub fn show_tree(tree: &Tree) -> String {
       format!("<{} {}>", show_tree(&*lft), show_tree(&*rgt))
     }
     Tree::Mat { sel, ret } => {
-      format!("? {} {}", show_tree(&*sel), show_tree(&*ret))
+      format!("?<{} {}>", show_tree(&*sel), show_tree(&*ret))
     }
   }
 }
