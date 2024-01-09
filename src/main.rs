@@ -4,6 +4,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
+#![feature(strict_provenance)]
 
 use hvmc::{
   jit::compile_book,
@@ -51,7 +52,7 @@ fn bare_main() {
 }
 
 fn cli_main() {
-  let data = run::Net::init_heap(1 << 32);
+  let data = run::Net::init_heap(1 << 8);
   let args: Vec<String> = env::args().collect();
   let help = "help".to_string();
   let opts = args.iter().skip(3).map(|s| s.as_str()).collect::<HashSet<_>>();
