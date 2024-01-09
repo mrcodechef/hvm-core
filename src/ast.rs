@@ -361,7 +361,7 @@ impl Host {
     let mut state = State { runtime: self, vars: Default::default(), next_var: 0 };
     let mut net = Net::default();
 
-    net.root = state.read_dir(rt_net.root.clone());
+    net.root = state.read_dir(rt_net.root.clone().unwrap());
 
     for (a, b) in &rt_net.rdex {
       net.rdex.push((state.read_ptr(a.clone(), None), state.read_ptr(b.clone(), None)))

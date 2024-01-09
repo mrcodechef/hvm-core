@@ -21,7 +21,7 @@ use std::{
     atomic::{AtomicU64, AtomicUsize, Ordering::Relaxed},
     Arc, Barrier,
   },
-  thread,
+  thread, ptr::NonNull, num::NonZeroUsize,
 };
 
 // -------------------
@@ -95,7 +95,7 @@ impl Port {
 
   #[inline(always)]
   pub fn new(tag: Tag, lab: Lab, loc: Loc) -> Self {
-    Port(((lab as u64) << 48) | (loc.0 as u64) | (tag as u64))
+    Port(((lab as u64) << 48) | (loc.0.get() as u64) | (tag as u64))
   }
 
   #[inline(always)]
@@ -110,7 +110,7 @@ impl Port {
 
   #[inline(always)]
   pub fn new_ref(def: &Def) -> Port {
-    Port::new(Ref, def.lab, Loc(def as *const _ as _))
+    unsafe { Port::new(Ref, def.lab, Loc::from_num(def as *const _ as _)) }
   }
 
   #[inline(always)]
@@ -130,7 +130,7 @@ impl Port {
 
   #[inline(always)]
   pub const fn loc(&self) -> Loc {
-    Loc((self.0 & 0x0000_FFFF_FFFF_FFF8) as usize as _)
+    unsafe { Loc::from_num((self.0 & 0x0000_FFFF_FFFF_FFF8) as usize) }
   }
 
   #[inline(always)]
@@ -218,7 +218,7 @@ pub enum Half {
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
-pub struct Loc(pub usize);
+pub struct Loc(NonZeroUsize);
 
 impl fmt::Debug for Loc {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -227,59 +227,77 @@ impl fmt::Debug for Loc {
 }
 
 impl Loc {
-  pub const NULL: Loc = Loc(0);
-
   const HALF_MASK: usize = 0b1000;
 
+  pub unsafe fn from_ptr(ptr: *const AtomicU64) -> Self {
+    Self(NonZeroUsize::new(ptr as usize).unwrap())
+  }
+  pub const unsafe fn from_num(ptr: usize) -> Self {
+    // Unwrap, but const
+    Self(match NonZeroUsize::new(ptr) {
+      Some(x) => x,
+      None => todo!(),
+    })
+  }
+  #[inline(always)]
+  pub fn as_ptr(&self) -> *const AtomicU64 {
+    self.0.get() as *const _
+  }
   #[inline(always)]
   pub fn val<'a>(&self) -> &'a AtomicU64 {
-    unsafe { &*(self.0 as *const _) }
+    unsafe { self.as_ptr().as_ref().unwrap() }
   }
 
   #[inline(always)]
   pub fn left_half(&self) -> Self {
-    Loc(self.0 & !Loc::HALF_MASK)
+    unsafe { Loc::from_num(self.0.get() & !Loc::HALF_MASK) }
   }
 
   #[inline(always)]
   pub fn other_half(&self) -> Self {
-    Loc(self.0 ^ Loc::HALF_MASK)
+    unsafe { Loc::from_num(self.0.get() ^ Loc::HALF_MASK) }
   }
 
   #[inline(always)]
   pub fn def<'a>(&self) -> &'a Def {
-    unsafe { &*(self.0 as *const _) }
+    unsafe { &*(self.0.get() as *const _) }
   }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
-pub struct Wire(pub *const AtomicU64);
+pub struct Wire(NonNull<AtomicU64>);
 
 impl fmt::Debug for Wire {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{:012x?}", self.0 as usize)
+    write!(f, "{:012x?}", self.0.as_ptr() as usize)
   }
 }
 
 unsafe impl Send for Wire {}
 
 impl Wire {
-  pub const NULL: Wire = Wire(std::ptr::null());
+  pub unsafe fn from_ptr(ptr: *const AtomicU64) -> Self {
+    Self(NonNull::new(ptr as _).unwrap())
+  }
+  #[inline(always)]
+  pub fn as_ptr(&self) -> *const AtomicU64 {
+    self.0.as_ptr()
+  }
 
   #[inline(always)]
   pub fn loc(&self) -> Loc {
-    Loc(self.0 as _)
+    Loc(NonZeroUsize::new(self.0.as_ptr() as usize).unwrap())
   }
 
   #[inline(always)]
   pub fn new(loc: Loc) -> Wire {
-    Wire(loc.0 as _)
+    unsafe { Wire::from_ptr(loc.0.get() as _) }
   }
 
   #[inline(always)]
   fn target<'a>(&self) -> &'a AtomicU64 {
-    unsafe { &*self.0 }
+    unsafe { self.0.as_ptr().as_ref().unwrap() }
   }
 
   #[inline(always)]
@@ -398,10 +416,10 @@ pub struct Net<'a> {
   pub trgs: Vec<Trg>,
   pub rwts: Rewrites, // rewrite count
   pub quik: Rewrites, // quick rewrite count
-  pub root: Wire,
+  pub root: Option<Wire>,
   // allocator
   pub area: &'a Area,
-  pub head: Loc,
+  pub head: Option<Loc>,
   pub next: usize,
   //
   pub tracer: Tracer,
@@ -410,13 +428,13 @@ pub struct Net<'a> {
 impl<'a> Net<'a> {
   // Creates an empty net with a given heap.
   pub fn new(area: &'a Area) -> Self {
-    let mut net = Net::new_with_root(area, Wire::NULL);
-    net.root = Wire::new(net.alloc());
+    let mut net = Net::new_with_root(area, None);
+    net.root = Some(Wire::new(net.alloc()));
     net
   }
 
   // Creates an empty net with a given heap.
-  pub fn new_with_root(area: &'a Area, root: Wire) -> Self {
+  pub fn new_with_root(area: &'a Area, root: Option<Wire>) -> Self {
     Net {
       tid: 0,
       tids: 1,
@@ -426,7 +444,7 @@ impl<'a> Net<'a> {
       quik: Rewrites::default(),
       root,
       area,
-      head: Loc::NULL,
+      head: None,
       next: 0,
       tracer: Tracer::default(),
     }
@@ -436,7 +454,7 @@ impl<'a> Net<'a> {
   pub fn boot(&mut self, def: &Def) {
     let def = Port::new_ref(def);
     trace!(self.tracer, def);
-    self.root.set_target(def);
+    self.root.as_ref().unwrap().set_target(def);
   }
 }
 
@@ -454,6 +472,10 @@ impl<'a> Net<'a> {
     }
   }
 
+  pub fn head_or_zero(&self) -> usize {
+    self.head.as_ref().map(|x| x.0.get()).unwrap_or(0)
+  }
+
   #[inline(never)]
   pub fn half_free(&mut self, loc: Loc) {
     const FREE: u64 = Port::FREE.0;
@@ -462,11 +484,11 @@ impl<'a> Net<'a> {
     if loc.other_half().val().load(Relaxed) == FREE {
       trace!(self.tracer, "other free");
       let loc = loc.left_half();
-      if loc.val().compare_exchange(FREE, self.head.0 as u64, Relaxed, Relaxed).is_ok() {
+      if loc.val().compare_exchange(FREE, self.head_or_zero() as u64, Relaxed, Relaxed).is_ok() {
         let old_head = &self.head;
         let new_head = loc;
         trace!(self.tracer, "appended", old_head, new_head);
-        self.head = new_head;
+        self.head = Some(new_head);
       } else {
         trace!(self.tracer, "too slow");
       };
@@ -476,21 +498,23 @@ impl<'a> Net<'a> {
   #[inline(never)]
   pub fn alloc(&mut self) -> Loc {
     trace!(self.tracer, self.head);
-    let loc = if self.head != Loc::NULL {
-      let loc = self.head.clone();
-      let next = Loc(self.head.val().load(Relaxed) as usize);
+    let loc = if let Some(head) = &self.head {
+      let loc = head.clone();
+      let next = unsafe { Loc::from_num(head.val().load(Relaxed) as usize) };
       trace!(self.tracer, next);
-      self.head = next;
+      self.head = Some(next);
       loc
     } else {
       let index = self.next;
       self.next += 1;
-      Loc(&self.area.get(index).expect("OOM").0 as *const _ as _)
+      // Note: Here we cast to *const Node instead of *const Port
+      // because we want to be able to use all of the node
+      unsafe { Loc::from_num(self.area.get(index).expect("OOM") as *const Node as usize) }
     };
     trace!(self.tracer, loc, self.head);
     loc.val().store(Port::LOCK.0, Relaxed);
     loc.other_half().val().store(Port::LOCK.0, Relaxed);
-    loc
+    loc.other_half()
   }
 }
 
@@ -596,12 +620,15 @@ impl<'a> Net<'a> {
     // If 'a_port' is a var...
     if a_port.tag() == Var {
       let got = a_port.wire().cas_target(Port::new_var(a_wire.loc()), b_port.clone());
+      println!("{:?}", got);
       // Attempts to link using a compare-and-swap.
       if got.is_ok() {
+        println!("{:?}", "ok");
         trace!(self.tracer, "cas ok");
         self.half_free(a_wire.loc());
       // If the CAS failed, resolve by using redirections.
       } else {
+        println!("{:?}", "cas fail");
         trace!(self.tracer, "cas fail", got.clone().unwrap_err());
         if b_port.tag() == Var {
           let port = b_port.redirect();
@@ -650,7 +677,9 @@ impl<'a> Net<'a> {
           while t_port.tag() == Red {
             trace!(self.tracer, t_wire, t_port);
             self.half_free(t_wire.loc());
+            println!("{:?}", t_port);
             t_wire = t_port.wire();
+            println!("{:?}", t_wire);
             t_port = t_wire.load_target();
           }
           return;
@@ -1233,7 +1262,7 @@ impl<'a> Net<'a> {
         }
       }
     }
-    go(self, self.root.clone(), 1, self.tid);
+    go(self, self.root.clone().unwrap(), 1, self.tid);
   }
 
   // Reduce a net to normal form.
@@ -1252,7 +1281,7 @@ impl<'a> Net<'a> {
     let area = &self.area[heap_start .. heap_start + heap_size];
     let mut net = Net::new_with_root(area, self.root.clone());
     net.next = self.next.saturating_sub(heap_start);
-    net.head = if tid == 0 { self.head.clone() } else { Loc::NULL };
+    net.head = if tid == 0 { self.head.clone() } else { None };
     net.tid = tid;
     net.tids = tids;
     net.tracer.set_tid(tid);
@@ -1285,6 +1314,7 @@ impl<'a> Net<'a> {
 
     // Initialize global objects
     let cores = std::thread::available_parallelism().unwrap().get() as usize;
+    let cores = 1usize;
     let tlog2 = cores.ilog2() as usize;
     let tids = 1 << tlog2;
     let delta = AtomicRewrites::default(); // delta rewrite counter

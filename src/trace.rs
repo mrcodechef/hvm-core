@@ -340,19 +340,31 @@ impl TraceArg for Port {
 
 impl TraceArg for Wire {
   fn to_word(&self) -> u64 {
-    self.0 as u64
+    self.as_ptr() as u64
   }
   fn from_word(word: u64) -> Self {
-    Wire(word as _)
+    unsafe { Wire::from_ptr(word as _) }
   }
 }
 
 impl TraceArg for Loc {
   fn to_word(&self) -> u64 {
-    self.0 as u64
+    self.as_ptr() as u64
   }
   fn from_word(word: u64) -> Self {
-    Loc(word as _)
+    unsafe { Loc::from_ptr(word as _) }
+  }
+}
+impl TraceArg for Option<Loc> {
+  fn to_word(&self) -> u64 {
+    self.as_ref().map(|x| x.as_ptr() as usize as u64).unwrap_or(0)
+  }
+  fn from_word(word: u64) -> Self {
+    if word == 0 {
+      None
+    } else {
+      Some(unsafe { Loc::from_ptr(word as _) })
+    }
   }
 }
 
