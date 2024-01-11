@@ -16,7 +16,7 @@ fn load_core(file: &str) -> hvmc::ast::Book {
 }
 
 // Loads file and generate DefinitionBook from hvm-lang syntax
-pub fn load_lang(file: &str) -> hvm_lang::term::Book {
+pub fn load_lang(file: &str) -> hvml::term::Book {
   let code = load_bench(file);
   parse_lang(&code)
 }
@@ -25,24 +25,24 @@ pub fn load_lang(file: &str) -> hvm_lang::term::Book {
 #[cfg(not(feature = "cuda"))] // FIXME: hangs indefinitely
 fn dec_bits() {
   let book = load_core("binary-counter/dec_bits.hvmc");
-  let (rnet, net) = normal(book, 1 << 16);
+  let (rwts, net) = normal(book, 1 << 16);
 
   assert_snapshot!(show_net(&net), @"(* (* (b b)))");
-  assert_debug_snapshot!(rnet.rewrites(), @"180113");
+  assert_debug_snapshot!(rwts, @"180113");
 }
 
 #[test]
 fn dec_bits_tree() {
   let book = load_core("binary-counter/dec_bits_tree.hvmc");
-  let (rnet, net) = normal(book, 1 << 13);
+  let (rwts, net) = normal(book, 1 << 13);
 
   // FIXME: The refs to the rule `@E` are not expanded
   if cfg!(feature = "cuda") {
     assert_snapshot!(show_net(&net), @"((((((@E @E) (@E @E)) ((@E @E) (@E @E))) (((@E @E) (@E @E)) ((@E @E) (@E @E)))) ((((@E @E) (@E @E)) ((@E @E) (@E @E))) (((@E @E) (@E @E)) ((@E @E) (@E @E))))) (((((@E @E) (@E @E)) ((@E @E) (@E @E))) (((@E @E) (@E @E)) ((@E @E) (@E @E)))) ((((@E @E) (@E @E)) ((@E @E) (@E @E))) (((@E @E) (@E @E)) ((@E @E) (@E @E))))))");
-    assert_debug_snapshot!(rnet.rewrites(), @"2878529");
+    assert_debug_snapshot!(rwts, @"2878529");
   } else {
     assert_snapshot!(show_net(&net), @"(((((((* (* (b b))) (* (* (c c)))) ((* (* (d d))) (* (* (e e))))) (((* (* (f f))) (* (* (g g)))) ((* (* (h h))) (* (* (i i)))))) ((((* (* (j j))) (* (* (k k)))) ((* (* (l l))) (* (* (m m))))) (((* (* (n n))) (* (* (o o)))) ((* (* (p p))) (* (* (q q))))))) (((((* (* (r r))) (* (* (s s)))) ((* (* (t t))) (* (* (u u))))) (((* (* (v v))) (* (* (w w)))) ((* (* (x x))) (* (* (y y)))))) ((((* (* (z z))) (* (* (ba ba)))) ((* (* (bb bb))) (* (* (bc bc))))) (((* (* (bd bd))) (* (* (be be)))) ((* (* (bf bf))) (* (* (bg bg)))))))) ((((((* (* (bh bh))) (* (* (bi bi)))) ((* (* (bj bj))) (* (* (bk bk))))) (((* (* (bl bl))) (* (* (bm bm)))) ((* (* (bn bn))) (* (* (bo bo)))))) ((((* (* (bp bp))) (* (* (bq bq)))) ((* (* (br br))) (* (* (bs bs))))) (((* (* (bt bt))) (* (* (bu bu)))) ((* (* (bv bv))) (* (* (bw bw))))))) (((((* (* (bx bx))) (* (* (by by)))) ((* (* (bz bz))) (* (* (ca ca))))) (((* (* (cb cb))) (* (* (cc cc)))) ((* (* (cd cd))) (* (* (ce ce)))))) ((((* (* (cf cf))) (* (* (cg cg)))) ((* (* (ch ch))) (* (* (ci ci))))) (((* (* (cj cj))) (* (* (ck ck)))) ((* (* (cl cl))) (* (* (cm cm)))))))))");
-    assert_debug_snapshot!(rnet.rewrites(), @"2878593");
+    assert_debug_snapshot!(rwts, @"2878593");
   }
 }
 
@@ -50,17 +50,17 @@ fn dec_bits_tree() {
 #[cfg(not(feature = "cuda"))] // FIXME: gpu runtime panics with `CUDA_ERROR_ILLEGAL_ADDRESS`
 fn test_church_exp() {
   let book = load_core("church/church_exp.hvmc");
-  let (rnet, net) = normal(book, 1 << 12);
+  let (rwts, net) = normal(book, 1 << 12);
 
   assert_snapshot!(show_net(&net));
-  assert_debug_snapshot!(rnet.rewrites(), @"1943");
+  assert_debug_snapshot!(rwts, @"1943");
 }
 
 #[test]
 fn test_church_mul() {
   let mut book = load_lang("church/church_mul.hvm");
-  let (rnet, net, id_map) = hvm_lang_normal(&mut book, 512);
-  let (readback, valid_readback) = hvm_lang_readback(&net, &book, id_map);
+  let (rwts, net) = hvm_lang_normal(&mut book, 512);
+  let (readback, valid_readback) = hvm_lang_readback(&net, &book);
 
   assert_debug_snapshot!(valid_readback, @"false"); // invalid because of dup labels 
 
@@ -68,11 +68,11 @@ fn test_church_mul() {
   if cfg!(feature = "cuda") {
     assert_snapshot!(show_net(&net), @"({2 ({2 b {3 c {4 d e}}} f) {3 (f g) {4 (g h) {5 i j}}}} (b k))");
     assert_snapshot!(readback, @"λa λb ((* {λc d {λd e {λe (a (a (a {b {c {c c}}}))) {a a}}}}) c)");
-    assert_debug_snapshot!(rnet.rewrites(), @"15");
+    assert_debug_snapshot!(rwts, @"15");
   } else {
     assert_snapshot!(show_net(&net), @"({2 ({2 b {3 c {4 d {5 e f}}}} g) {3 (g h) {4 (h i) {5 (i j) k}}}} (b l))");
     assert_snapshot!(readback, @"λa λb ((* {λc d {λd e {λe f {λf (a (a (a (a {b {c {c {c c}}}})))) a}}}}) c)");
-    assert_debug_snapshot!(rnet.rewrites(), @"17");
+    assert_debug_snapshot!(rwts, @"17");
   }
 }
 
@@ -80,17 +80,17 @@ fn test_church_mul() {
 #[cfg(not(feature = "cuda"))] // FIXME: hangs indefinitely
 fn alloc_big_tree() {
   let book = load_core("tree/alloc_big_tree.hvmc");
-  let (rnet, net) = normal(book, 1 << 16);
+  let (rwts, net) = normal(book, 1 << 16);
 
   assert_snapshot!(show_net(&net)); // file snapshot
-  assert_debug_snapshot!(rnet.rewrites(), @"24628");
+  assert_debug_snapshot!(rwts, @"24628");
 }
 
 #[test]
 fn test_neg_fusion() {
   let mut book = load_lang("fusion/neg_fusion.hvm");
-  let (rnet, net, id_map) = hvm_lang_normal(&mut book, 512);
-  let (readback, valid_readback) = hvm_lang_readback(&net, &book, id_map);
+  let (rwts, net) = hvm_lang_normal(&mut book, 512);
+  let (readback, valid_readback) = hvm_lang_readback(&net, &book);
 
   assert!(valid_readback);
   assert_snapshot!(show_net(&net), @"(b (* b))");
@@ -98,8 +98,8 @@ fn test_neg_fusion() {
 
   // TODO: investigate why this difference exists
   if cfg!(feature = "cuda") {
-    assert_debug_snapshot!(rnet.rewrites(), @"160");
+    assert_debug_snapshot!(rwts, @"160");
   } else {
-    assert_debug_snapshot!(rnet.rewrites(), @"153");
+    assert_debug_snapshot!(rwts, @"153");
   }
 }

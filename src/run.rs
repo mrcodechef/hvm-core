@@ -230,13 +230,13 @@ impl Loc {
   const HALF_MASK: usize = 0b1000;
 
   pub unsafe fn from_ptr(ptr: *const AtomicU64) -> Self {
-    Self(NonZeroUsize::new(ptr as usize).unwrap())
+    Self(NonZeroUsize::new(ptr as usize).unwrap_unchecked())
   }
   pub const unsafe fn from_num(ptr: usize) -> Self {
     // Unwrap, but const
     Self(match NonZeroUsize::new(ptr) {
       Some(x) => x,
-      None => todo!(),
+      None => unreachable_unchecked(),
     })
   }
   #[inline(always)]
@@ -245,7 +245,7 @@ impl Loc {
   }
   #[inline(always)]
   pub fn val<'a>(&self) -> &'a AtomicU64 {
-    unsafe { self.as_ptr().as_ref().unwrap() }
+    unsafe { self.as_ptr().as_ref().unwrap_unchecked() }
   }
 
   #[inline(always)]
@@ -278,7 +278,7 @@ unsafe impl Send for Wire {}
 
 impl Wire {
   pub unsafe fn from_ptr(ptr: *const AtomicU64) -> Self {
-    Self(NonNull::new(ptr as _).unwrap())
+    Self(NonNull::new(ptr as _).unwrap_unchecked())
   }
   #[inline(always)]
   pub fn as_ptr(&self) -> *const AtomicU64 {
@@ -287,7 +287,7 @@ impl Wire {
 
   #[inline(always)]
   pub fn loc(&self) -> Loc {
-    Loc(NonZeroUsize::new(self.0.as_ptr() as usize).unwrap())
+    unsafe { Loc(NonZeroUsize::new(self.0.as_ptr() as usize).unwrap_unchecked()) }
   }
 
   #[inline(always)]
@@ -297,7 +297,7 @@ impl Wire {
 
   #[inline(always)]
   fn target<'a>(&self) -> &'a AtomicU64 {
-    unsafe { self.0.as_ptr().as_ref().unwrap() }
+    unsafe { self.0.as_ptr().as_ref().unwrap_unchecked() }
   }
 
   #[inline(always)]
@@ -1209,6 +1209,12 @@ impl<'a> Net<'a> {
   #[inline(always)]
   fn set_trg(&mut self, i: usize, trg: Trg) {
     unsafe { *self.trgs.get_unchecked_mut(i) = trg }
+  }
+}
+
+impl<'a> Net<'a> {
+  pub fn rewrites(&self) -> Rewrites {
+    self.rwts
   }
 }
 
