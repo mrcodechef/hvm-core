@@ -1,0 +1,17 @@
+{"run_id":"1705083790-971839445","line":56,"new":{"module_name":"tests","snapshot_name":"church_mul-2","metadata":{"source":"tests/tests.rs","assertion_line":56,"expression":"readback"},"snapshot":"λa λb dup#0 g c = dup#2 e d = h; (d (e (dup#1 f h = a; f {#0 b g}))); c"},"old":{"module_name":"tests","metadata":{},"snapshot":"λa λb (a (a (a (a (a (a b))))))"}}
+{"run_id":"1705083901-160791628","line":28,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":29,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":44,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":45,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":12,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":13,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":20,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":21,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":55,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":81,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":82,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":83,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":69,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":70,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":71,"new":null,"old":null}
+{"run_id":"1705083901-160791628","line":56,"new":{"module_name":"tests","snapshot_name":"church_mul-2","metadata":{"source":"tests/tests.rs","assertion_line":56,"expression":"readback"},"snapshot":"λa λb dup#0 g c = dup#2 e d = h; (d (e (dup#1 f h = a; f {#0 b g}))); c"},"old":{"module_name":"tests","metadata":{},"snapshot":"λa λb (a (a (a (a (a (a b))))))"}}

@@ -1,0 +1,14 @@
+{"run_id":"1705083508-437779752","line":64,"new":{"module_name":"benches","snapshot_name":"church_mul","metadata":{"source":"tests/benches.rs","assertion_line":64,"expression":"valid_readback"},"snapshot":"true"},"old":{"module_name":"benches","metadata":{},"snapshot":"false"}}
+{"run_id":"1705083508-437779752","line":30,"new":null,"old":null}
+{"run_id":"1705083508-437779752","line":31,"new":null,"old":null}
+{"run_id":"1705083508-437779752","line":44,"new":null,"old":null}
+{"run_id":"1705083508-437779752","line":45,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":95,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":30,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":96,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":102,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":31,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":85,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":64,"new":{"module_name":"benches","snapshot_name":"church_mul","metadata":{"source":"tests/benches.rs","assertion_line":64,"expression":"valid_readback"},"snapshot":"true"},"old":{"module_name":"benches","metadata":{},"snapshot":"false"}}
+{"run_id":"1705083850-739452095","line":44,"new":null,"old":null}
+{"run_id":"1705083850-739452095","line":45,"new":null,"old":null}
