@@ -10,7 +10,7 @@ fn test_era_era() {
   let net = parse_core("@main = * & * ~ *");
   let (rwts, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"*");
-  assert_debug_snapshot!(rwts, @"2");
+  assert_debug_snapshot!(rwts.total(), @"2");
 }
 
 #[test]
@@ -18,15 +18,15 @@ fn test_era_era2() {
   let net = parse_core("@main = (* *) & * ~ *");
   let (rwts, net) = normal(net, 16);
   assert_snapshot!(show_net(&net), @"(* *)");
-  assert_debug_snapshot!(rwts, @"2");
+  assert_debug_snapshot!(rwts.total(), @"2");
 }
 
 #[test]
 fn test_commutation() {
   let net = parse_core("@main = root & (x x) ~ [* root]");
   let (rwts, net) = normal(net, 16);
-  assert_snapshot!(show_net(&net), @"(b b)");
-  assert_debug_snapshot!(rwts, @"5");
+  assert_snapshot!(show_net(&net), @"(a a)");
+  assert_debug_snapshot!(rwts.total(), @"5");
 }
 
 #[test]
@@ -41,8 +41,8 @@ fn test_bool_and() {
   );
   let (rwts, net) = normal(book, 64);
 
-  assert_snapshot!(show_net(&net), @"(* (b b))");
-  assert_debug_snapshot!(rwts, @"9");
+  assert_snapshot!(show_net(&net), @"(* (a a))");
+  assert_debug_snapshot!(rwts.total(), @"5");
 }
 
 #[test]
@@ -52,21 +52,23 @@ fn test_church_mul() {
   let (readback, valid_readback) = hvm_lang_readback(&net, &book);
 
   assert!(valid_readback);
-  assert_snapshot!(show_net(&net), @"({2 ({2 b c} d) {3 (d e) (e {2 c f})}} (b f))");
+  assert_snapshot!(show_net(&net), @"({5 ({3 a b} c) {7 (c d) (d {3 b e})}} (a e))");
   assert_snapshot!(readback, @"λa λb (a (a (a (a (a (a b))))))");
-  assert_debug_snapshot!(rwts, @"12");
+  assert_debug_snapshot!(rwts.total(), @"7");
 }
 
 #[test]
 fn test_tree_alloc() {
   let mut book = load_lang("tree_alloc.hvm");
+  println!("{:?}", book);
+  println!("{:?}", "Hi");
   let (rwts, net) = hvm_lang_normal(&mut book, 512);
   let (readback, valid_readback) = hvm_lang_readback(&net, &book);
 
   assert!(valid_readback);
-  assert_snapshot!(show_net(&net), @"(b (* b))");
+  assert_snapshot!(show_net(&net), @"(a (* a))");
   assert_snapshot!(readback, @"λa λ* a");
-  assert_debug_snapshot!(rwts, @"104");
+  assert_debug_snapshot!(rwts.total(), @"53");
 }
 
 #[test]
@@ -76,7 +78,7 @@ fn test_queue() {
   let (readback, valid_readback) = hvm_lang_readback(&net, &book);
 
   assert!(valid_readback);
-  assert_snapshot!(show_net(&net), @"(((* @B) (((((b c) (b c)) (((({2 (d e) (e f)} (d f)) ((* @A) g)) (* g)) h)) (* h)) i)) (* i))");
-  assert_snapshot!(readback, @"λa λ* ((a λ* λb b) λc λ* ((c λd λe (d e)) λf λ* ((f λg λh (g (g h))) λ* λi i)))");
-  assert_debug_snapshot!(rwts, @"65");
+  assert_snapshot!(show_net(&net), @"(((* (a a)) (((((b c) (b c)) (((({3 (d e) (e f)} (d f)) ((* (g g)) h)) (* h)) i)) (* i)) j)) (* j))");
+  assert_snapshot!(readback, @"λa λ* (a λ* λb b λc λ* (c λd λe (d e) λf λ* (f λg λh dup#0 j i = g; (i (j h)) λ* λk k)))");
+  assert_debug_snapshot!(rwts.total(), @"29");
 }

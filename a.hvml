@@ -1,7 +1,0 @@
-data Bool = T | F
-data Pair = (Pair.new a b)
-Bool.not = λx match x {
-	T: F
-	F: T
-}
-main = (Bool.not (Pair.new T F))

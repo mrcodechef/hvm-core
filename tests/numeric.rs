@@ -10,114 +10,114 @@ mod numeric_tests {
   use insta::{assert_debug_snapshot, assert_snapshot};
 
   fn op_net(lnum: u32, op: Op, rnum: u32) -> Book {
-    let op = op as u8;
-    parse_core(&format!("@main = root & <#{lnum} <#{rnum} root>> ~ #{op}"))
+    println!("Code: {:?}", &format!("@main = root & #{lnum} ~ <{op} #{rnum} root>"));
+    parse_core(&format!("@main = root & #{lnum} ~ <{op} #{rnum} root>"))
   }
 
   #[test]
   fn test_add() {
     let net = op_net(10, Op::Add, 2);
-    let (rnet, net) = normal(net, 16);
+    let (rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#12");
-    assert_debug_snapshot!(rnet, @"5");
+    assert_debug_snapshot!(rwts.total(), @"2");
   }
 
   #[test]
   fn test_sub() {
     let net = op_net(10, Op::Sub, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#8");
   }
 
   #[test]
   fn test_mul() {
     let net = op_net(10, Op::Mul, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#20");
   }
 
   #[test]
   fn test_div() {
     let net = op_net(10, Op::Div, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#5");
   }
 
   #[test]
   fn test_mod() {
     let net = op_net(10, Op::Mod, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#0");
   }
 
   #[test]
   fn test_eq() {
     let net = op_net(10, Op::Eq, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#0");
   }
 
   #[test]
   fn test_ne() {
     let net = op_net(10, Op::Ne, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#1");
   }
 
   #[test]
   fn test_lt() {
     let net = op_net(10, Op::Lt, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#0");
   }
 
   #[test]
   fn test_gt() {
     let net = op_net(10, Op::Gt, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#1");
   }
 
   #[test]
   fn test_and() {
     let net = op_net(10, Op::And, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#2");
   }
 
   #[test]
   fn test_or() {
     let net = op_net(10, Op::Or, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#10");
   }
 
   #[test]
   fn test_xor() {
     let net = op_net(10, Op::Xor, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#8");
   }
 
   #[test]
   fn test_not() {
     let net = op_net(0, Op::Not, 256);
-    let (rnet, net) = normal(net, 16);
+    let (rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#16776959");
-    assert_debug_snapshot!(rnet, @"5");
+    assert_debug_snapshot!(rwts.total(), @"2");
   }
 
   #[test]
   fn test_lsh() {
     let net = op_net(10, Op::Lsh, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#40");
   }
 
   #[test]
   fn test_rsh() {
     let net = op_net(10, Op::Rsh, 2);
-    let (_rnet, net) = normal(net, 16);
+    let (_rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#2");
   }
 
@@ -126,9 +126,9 @@ mod numeric_tests {
   /// that is read as the unsigned integer `16777215`
   fn test_div_by_0() {
     let net = op_net(9, Op::Div, 0);
-    let (rnet, net) = normal(net, 16);
+    let (rwts, net) = normal(net, 16);
     assert_snapshot!(show_net(&net), @"#16777215");
-    assert_debug_snapshot!(rnet, @"5");
+    assert_debug_snapshot!(rwts.total(), @"5");
   }
 
   #[test]
@@ -138,6 +138,6 @@ mod numeric_tests {
     let (rwts, net) = hvm_lang_normal(&mut net, 256);
 
     assert_snapshot!(show_net(&net), @"#2138224");
-    assert_debug_snapshot!(rwts.total(), @"88");
+    assert_debug_snapshot!(rwts.total(), @"36");
   }
 }

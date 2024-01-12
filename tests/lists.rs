@@ -31,14 +31,14 @@ fn test_list_got() {
     rwts_list.push(rwts.total())
   }
 
-  assert_debug_snapshot!(rwts_list[0], @"583");
-  assert_debug_snapshot!(rwts_list[1], @"615");
-  assert_debug_snapshot!(rwts_list[2], @"679");
-  assert_debug_snapshot!(rwts_list[3], @"807");
+  assert_debug_snapshot!(rwts_list[0], @"468");
+  assert_debug_snapshot!(rwts_list[1], @"478");
+  assert_debug_snapshot!(rwts_list[2], @"498");
+  assert_debug_snapshot!(rwts_list[3], @"538");
   #[cfg(not(feature = "cuda"))]
-  assert_debug_snapshot!(rwts_list[4], @"1063");
+  assert_debug_snapshot!(rwts_list[4], @"618");
   #[cfg(not(feature = "cuda"))]
-  assert_debug_snapshot!(rwts_list[5], @"1575");
+  assert_debug_snapshot!(rwts_list[5], @"778");
 
   // Tests the linearity of the function
   let delta = rwts_list[1] - rwts_list[0];
@@ -66,12 +66,12 @@ fn test_list_put() {
     rwts_list.push(rwts.total())
   }
 
-  assert_debug_snapshot!(rwts_list[0], @"566");
-  assert_debug_snapshot!(rwts_list[1], @"588");
-  assert_debug_snapshot!(rwts_list[2], @"632");
-  assert_debug_snapshot!(rwts_list[3], @"720");
-  assert_debug_snapshot!(rwts_list[4], @"896");
-  assert_debug_snapshot!(rwts_list[5], @"1248");
+  assert_debug_snapshot!(rwts_list[0], @"457");
+  assert_debug_snapshot!(rwts_list[1], @"467");
+  assert_debug_snapshot!(rwts_list[2], @"487");
+  assert_debug_snapshot!(rwts_list[3], @"527");
+  assert_debug_snapshot!(rwts_list[4], @"607");
+  assert_debug_snapshot!(rwts_list[5], @"767");
 
   //Tests the linearity of the function
   let delta = rwts_list[1] - rwts_list[0];

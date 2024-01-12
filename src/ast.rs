@@ -82,6 +82,16 @@ fn skip(chars: &mut Peekable<Chars>) {
   }
 }
 
+fn skip_whitespace(chars: &mut Peekable<Chars>) {
+  while let Some(c) = chars.peek() {
+    if !c.is_ascii_whitespace() {
+      break;
+    } else {
+      chars.next();
+    }
+  }
+}
+
 pub fn consume(chars: &mut Peekable<Chars>, text: &str) -> Result<(), String> {
   skip(chars);
   for c in text.chars() {
@@ -126,7 +136,10 @@ pub fn parse_name(chars: &mut Peekable<Chars>) -> Result<String, String> {
 
 pub fn parse_opx_lit(chars: &mut Peekable<Chars>) -> Result<String, String> {
   let mut opx = String::new();
-  skip(chars);
+  // We use skip_whitespace
+  // instead of skip
+  // because it is ambiguous otherwise.
+  skip_whitespace(chars);
   while let Some(c) = chars.peek() {
     if !"+-=*/%<>|&^!?".contains(*c) {
       break;
@@ -139,7 +152,10 @@ pub fn parse_opx_lit(chars: &mut Peekable<Chars>) -> Result<String, String> {
 
 fn parse_opr(chars: &mut Peekable<Chars>) -> Result<Op, String> {
   let opx = parse_opx_lit(chars)?;
-  opx.parse().map_err(|_| format!("Unknown operator: {opx}"))
+  opx.parse().map_err(|_| {
+    let first_char = chars.peek();
+    format!("Unknown operator: \"{opx}\". Head: {first_char:?}")
+  })
 }
 
 pub fn parse_tree(chars: &mut Peekable<Chars>) -> Result<Tree, String> {
@@ -240,6 +256,7 @@ pub fn parse_book(chars: &mut Peekable<Chars>) -> Result<Book, String> {
   Ok(book)
 }
 
+#[allow(unreachable_code)]
 fn do_parse<T>(code: &str, parse_fn: impl Fn(&mut Peekable<Chars>) -> Result<T, String>) -> T {
   let chars = &mut code.chars().peekable();
   match parse_fn(chars) {
@@ -247,11 +264,13 @@ fn do_parse<T>(code: &str, parse_fn: impl Fn(&mut Peekable<Chars>) -> Result<T, 
       if chars.next().is_none() {
         result
       } else {
+        panic!("Unable to parse the whole input. Is this not an hvmc file?");
         eprintln!("Unable to parse the whole input. Is this not an hvmc file?");
         std::process::exit(1);
       }
     }
     Err(err) => {
+      panic!("Parsing error: {}", err);
       eprintln!("{}", err);
       std::process::exit(1);
     }
@@ -419,8 +438,7 @@ fn net_to_runtime_def(defs: &HashMap<String, DefRef>, net: &Net) -> DefNet {
   state.visit_tree(&net.root, 0);
 
   net.rdex.iter().for_each(|(a, b)| state.visit_redex(a, b));
-
-  assert!(state.scope.is_empty());
+  assert!(state.scope.is_empty(), "Scope is not empty:\nNet:{}\n. Scope:{:#?}", show_net(net), state.scope);
 
   return DefNet { instr: state.instr };
 

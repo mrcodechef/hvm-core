@@ -1323,7 +1323,6 @@ impl<'a> Net<'a> {
 
     // Initialize global objects
     let cores = std::thread::available_parallelism().unwrap().get() as usize;
-    let cores = 1usize;
     let tlog2 = cores.ilog2() as usize;
     let tids = 1 << tlog2;
     let delta = AtomicRewrites::default(); // delta rewrite counter
