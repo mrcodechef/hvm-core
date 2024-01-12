@@ -40,9 +40,6 @@ insta = "1.34.0"
 [patch."https://github.com/HigherOrderCO/hvm-core.git"]
 hvm-core = { path = "." }
 
-[patch."https://github.com/HigherOrderCO/hvm-lang.git"]
-hvm-lang = { path = "../hvm-lang"}
-
 [[bench]]
 name = "benches"
 harness = false
