@@ -549,8 +549,6 @@ pub fn calculate_min_safe_labels(book: &Book) -> impl Iterator<Item = (&str, Lab
           LabelState::Done(lab) => return lab,
         },
       };
-      println!("{}", show_book(self.book));
-      println!("Key looked up: {}", key);
       let mut lab = 0;
       let def = &self.book[key];
       self.visit_tree(&def.root, &mut lab);

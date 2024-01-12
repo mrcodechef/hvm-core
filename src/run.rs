@@ -620,15 +620,12 @@ impl<'a> Net<'a> {
     // If 'a_port' is a var...
     if a_port.tag() == Var {
       let got = a_port.wire().cas_target(Port::new_var(a_wire.loc()), b_port.clone());
-      println!("{:?}", got);
       // Attempts to link using a compare-and-swap.
       if got.is_ok() {
-        println!("{:?}", "ok");
         trace!(self.tracer, "cas ok");
         self.half_free(a_wire.loc());
       // If the CAS failed, resolve by using redirections.
       } else {
-        println!("{:?}", "cas fail");
         trace!(self.tracer, "cas fail", got.clone().unwrap_err());
         if b_port.tag() == Var {
           let port = b_port.redirect();
@@ -677,9 +674,7 @@ impl<'a> Net<'a> {
           while t_port.tag() == Red {
             trace!(self.tracer, t_wire, t_port);
             self.half_free(t_wire.loc());
-            println!("{:?}", t_port);
             t_wire = t_port.wire();
-            println!("{:?}", t_wire);
             t_port = t_wire.load_target();
           }
           return;
