@@ -6,6 +6,7 @@
 // syntax reflects this representation. The grammar is specified on this repo's README.
 
 use crate::run;
+use crate::run::_Ptr;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -460,7 +461,7 @@ pub enum Parent {
   Redex,
   Node { loc: run::Loc, port: run::Port },
 }
-const PARENT_ROOT: Parent = Parent::Node { loc: run::ROOT.loc(), port: tag_to_port(run::ROOT.tag()) };
+const PARENT_ROOT: Parent = Parent::Node { loc: 0, port: tag_to_port(run::VR2) };
 
 pub fn tree_to_runtime_go(rt_net: &mut run::Net, tree: &Tree, vars: &mut HashMap<String, Parent>, parent: Parent) -> run::Ptr {
   match tree {

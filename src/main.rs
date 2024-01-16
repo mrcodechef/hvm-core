@@ -187,8 +187,8 @@ pub fn gen_cuda_book(book: &run::Book) -> String {
     // .node
     code.push_str("  // .node\n");
     for (i, node) in net.node.iter().enumerate() {
-      code.push_str(&format!("  0x{:08X},", node.0.0));
-      code.push_str(&format!(" 0x{:08X},", node.1.0));
+      code.push_str(&format!("  0x{:08X},", node.0));
+      code.push_str(&format!(" 0x{:08X},", node.1));
       if (i + 1) % 4 == 0 {
         code.push_str("\n");
       }
@@ -200,8 +200,8 @@ pub fn gen_cuda_book(book: &run::Book) -> String {
     // .rdex
     code.push_str("  // .rdex\n");
     for (i, (a, b)) in net.rdex.iter().enumerate() {
-      code.push_str(&format!("  0x{:08X},", a.0));
-      code.push_str(&format!(" 0x{:08X},", b.0));
+      code.push_str(&format!("  0x{:08X},", a));
+      code.push_str(&format!(" 0x{:08X},", b));
       if (i + 1) % 4 == 0 {
         code.push_str("\n");
       }

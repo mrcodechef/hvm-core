@@ -2,6 +2,7 @@
 
 use crate::run;
 use crate::ast;
+use crate::run::_Ptr;
 
 use std::collections::HashMap;
 

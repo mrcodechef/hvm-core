@@ -54,8 +54,8 @@ pub const LSH: Lab = 0x0E; // left-shift
 pub const RSH: Lab = 0x0F; // right-shift
 pub const NOT: Lab = 0x10; // logical-not
 
-pub const ERAS: Ptr = Ptr::new(ERA, 0, 0);
-pub const ROOT: Ptr = Ptr::new(VR2, 0, 0);
+pub const ERAS: Ptr = Ptr(ERA as Val);
+pub const ROOT: Ptr = Ptr(VR2 as Val);
 pub const NULL: Ptr = Ptr(0x0000_0000_0000_0000);
 pub const GONE: Ptr = Ptr(0xFFFF_FFFF_FFFF_FFEF);
 pub const LOCK: Ptr = Ptr(0xFFFF_FFFF_FFFF_FFFF); // if last digit is F it will be seen as a CTR
@@ -66,8 +66,11 @@ pub const P1: Port = 0;
 pub const P2: Port = 1;
 
 // A tagged pointer.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
-pub struct Ptr(pub Val);
+pub type Ptr= Val;
+
+pub const fn Ptr(x: Val) -> Ptr {
+  x
+}
 
 // An atomic tagged pointer.
 pub struct APtr(pub AVal);
@@ -136,131 +139,157 @@ pub struct Book {
   pub defs: HashMap<Val, Def, nohash_hasher::BuildNoHashHasher<Val>>,
 }
 
-impl Ptr {
-  #[inline(always)]
-  pub const fn new(tag: Tag, lab: Lab, loc: Loc) -> Self {
+impl _Ptr for Ptr {#[inline(always)]
+  fn new(tag: Tag, lab: Lab, loc: Loc) -> Ptr {
     Ptr(((loc as Val) << 32) | ((lab as Val) << 4) | (tag as Val))
   }
 
   #[inline(always)]
-  pub const fn big(tag: Tag, val: Val) -> Self {
+  fn big(tag: Tag, val: Val) -> Ptr {
     Ptr((val << 4) | (tag as Val))
   }
 
   #[inline(always)]
-  pub const fn tag(&self) -> Tag {
-    (self.0 & 0xF) as Tag
+  fn tag(&self) -> Tag {
+    (self & 0xF) as Tag
   }
 
   #[inline(always)]
-  pub const fn lab(&self) -> Lab {
-    (self.0 as Lab) >> 4
+  fn lab(&self) -> Lab {
+    (*self as Lab) >> 4
   }
 
   #[inline(always)]
-  pub const fn loc(&self) -> Loc {
-    (self.0 >> 32) as Loc
+  fn loc(&self) -> Loc {
+    (self >> 32) as Loc
   }
 
   #[inline(always)]
-  pub const fn val(&self) -> Val {
-    self.0 >> 4
+  fn val(&self) -> Val {
+    self>> 4
   }
 
   #[inline(always)]
-  pub fn is_nil(&self) -> bool {
-    return self.0 == 0;
+  fn is_nil(&self) -> bool {
+    return self == &0;
   }
 
   #[inline(always)]
-  pub fn is_var(&self) -> bool {
+  fn is_var(&self) -> bool {
     return matches!(self.tag(), VR1..=VR2) && !self.is_nil();
   }
 
   #[inline(always)]
-  pub fn is_red(&self) -> bool {
+  fn is_red(&self) -> bool {
     return matches!(self.tag(), RD1..=RD2) && !self.is_nil();
   }
 
   #[inline(always)]
-  pub fn is_era(&self) -> bool {
+  fn is_era(&self) -> bool {
     return matches!(self.tag(), ERA);
   }
 
   #[inline(always)]
-  pub fn is_ctr(&self) -> bool {
+  fn is_ctr(&self) -> bool {
     return matches!(self.tag(), LAM..=END);
   }
 
   #[inline(always)]
-  pub fn is_dup(&self) -> bool {
+  fn is_dup(&self) -> bool {
     return matches!(self.tag(), DUP);
   }
 
   #[inline(always)]
-  pub fn is_ref(&self) -> bool {
+  fn is_ref(&self) -> bool {
     return matches!(self.tag(), REF);
   }
 
   #[inline(always)]
-  pub fn is_pri(&self) -> bool {
+  fn is_pri(&self) -> bool {
     return matches!(self.tag(), REF..=END);
   }
 
   #[inline(always)]
-  pub fn is_num(&self) -> bool {
+  fn is_num(&self) -> bool {
     return matches!(self.tag(), NUM);
   }
 
   #[inline(always)]
-  pub fn is_op1(&self) -> bool {
+  fn is_op1(&self) -> bool {
     return matches!(self.tag(), OP1);
   }
 
   #[inline(always)]
-  pub fn is_op2(&self) -> bool {
+  fn is_op2(&self) -> bool {
     return matches!(self.tag(), OP2);
   }
 
   #[inline(always)]
-  pub fn is_skp(&self) -> bool {
+  fn is_skp(&self) -> bool {
     return matches!(self.tag(), ERA | NUM | REF);
   }
 
   #[inline(always)]
-  pub fn is_mat(&self) -> bool {
+  fn is_mat(&self) -> bool {
     return matches!(self.tag(), MAT);
   }
 
   #[inline(always)]
-  pub fn is_nod(&self) -> bool {
+  fn is_nod(&self) -> bool {
     return matches!(self.tag(), OP2..=END);
   }
 
   #[inline(always)]
-  pub fn has_loc(&self) -> bool {
+  fn has_loc(&self) -> bool {
     return matches!(self.tag(), VR1..=VR2 | OP2..=END);
   }
 
   #[inline(always)]
-  pub fn redirect(&self) -> Ptr {
+  fn redirect(&self) -> Ptr {
     return Ptr::new(self.tag() + RD2 - VR2, 0, self.loc());
   }
 
   #[inline(always)]
-  pub fn unredirect(&self) -> Ptr {
+  fn unredirect(&self) -> Ptr {
     return Ptr::new(self.tag() + RD2 - VR2, 0, self.loc());
   }
 
   #[inline(always)]
-  pub fn can_skip(a: Ptr, b: Ptr) -> bool {
+  fn can_skip(a: Ptr, b: Ptr) -> bool {
     return matches!(a.tag(), ERA | REF) && matches!(b.tag(), ERA | REF);
   }
 }
 
+pub trait _Ptr {
+  fn new(tag: Tag, lab: Lab, loc: Loc) -> Ptr ;
+  fn big(tag: Tag, val: Val) -> Ptr ;
+  fn tag(&self) -> Tag ;
+  fn lab(&self) -> Lab ;
+  fn loc(&self) -> Loc ;
+  fn val(&self) -> Val ;
+  fn is_nil(&self) -> bool ;
+  fn is_var(&self) -> bool ;
+  fn is_red(&self) -> bool ;
+  fn is_era(&self) -> bool ;
+  fn is_ctr(&self) -> bool ;
+  fn is_dup(&self) -> bool ;
+  fn is_ref(&self) -> bool ;
+  fn is_pri(&self) -> bool ;
+  fn is_num(&self) -> bool ;
+  fn is_op1(&self) -> bool ;
+  fn is_op2(&self) -> bool ;
+  fn is_skp(&self) -> bool ;
+  fn is_mat(&self) -> bool ;
+  fn is_nod(&self) -> bool ;
+  fn has_loc(&self) -> bool ;
+  fn redirect(&self) -> Ptr ;
+  fn unredirect(&self) -> Ptr ;
+  fn can_skip(a: Ptr, b: Ptr) -> bool ;
+}
+
 impl APtr {
   pub fn new(ptr: Ptr) -> Self {
-    APtr(AtomicU64::new(ptr.0))
+    APtr(AtomicU64::new(ptr))
   }
 
   pub fn load(&self) -> Ptr {
@@ -268,7 +297,7 @@ impl APtr {
   }
 
   pub fn store(&self, ptr: Ptr) {
-    self.0.store(ptr.0, Ordering::Relaxed);
+    self.0.store(ptr, Ordering::Relaxed);
   }
 }
 
@@ -344,7 +373,7 @@ impl<'a> Heap<'a> {
     unsafe {
       let node = self.data.get_unchecked(index as usize);
       let data = if port == P1 { &node.0.0 } else { &node.1.0 };
-      let done = data.compare_exchange_weak(expected.0, value.0, Ordering::Relaxed, Ordering::Relaxed);
+      let done = data.compare_exchange_weak(expected, value, Ordering::Relaxed, Ordering::Relaxed);
       return done.map(Ptr).map_err(Ptr);
     }
   }
@@ -354,7 +383,7 @@ impl<'a> Heap<'a> {
     unsafe {
       let node = self.data.get_unchecked(index as usize);
       let data = if port == P1 { &node.0.0 } else { &node.1.0 };
-      return Ptr(data.swap(value.0, Ordering::Relaxed));
+      return Ptr(data.swap(value, Ordering::Relaxed));
     }
   }
 
@@ -460,26 +489,26 @@ impl<'a> Net<'a> {
   // Gets a pointer's target.
   #[inline(always)]
   pub fn get_target(&self, ptr: Ptr) -> Ptr {
-    self.heap.get(ptr.loc(), ptr.0 & 1)
+    self.heap.get(ptr.loc(), ptr & 1)
   }
 
   // Sets a pointer's target.
   #[inline(always)]
   pub fn set_target(&mut self, ptr: Ptr, val: Ptr) {
-    self.heap.set(ptr.loc(), ptr.0 & 1, val)
+    self.heap.set(ptr.loc(), ptr & 1, val)
   }
 
   // Takes a pointer's target.
   #[inline(always)]
   pub fn swap_target(&self, ptr: Ptr, value: Ptr) -> Ptr {
-    self.heap.swap(ptr.loc(), ptr.0 & 1, value)
+    self.heap.swap(ptr.loc(), ptr & 1, value)
   }
 
   // Takes a pointer's target.
   #[inline(always)]
   pub fn take_target(&self, ptr: Ptr) -> Ptr {
     loop {
-      let got = self.heap.swap(ptr.loc(), ptr.0 & 1, LOCK);
+      let got = self.heap.swap(ptr.loc(), ptr & 1, LOCK);
       if got != LOCK && got != NULL {
         return got;
       }
@@ -489,7 +518,7 @@ impl<'a> Net<'a> {
   // Sets a pointer's target, using CAS.
   #[inline(always)]
   pub fn cas_target(&self, ptr: Ptr, expected: Ptr, value: Ptr) -> Result<Ptr,Ptr> {
-    self.heap.cas(ptr.loc(), ptr.0 & 1, expected, value)
+    self.heap.cas(ptr.loc(), ptr & 1, expected, value)
   }
 
   #[inline(always)]
@@ -726,7 +755,7 @@ impl<'a> Net<'a> {
       (LAM.. , MAT  ) => self.comm(b, a),
       (MAT   , ERA  ) => self.era2(a),
       (ERA   , MAT  ) => self.era2(b),
-      _               => { println!("{:016x} {:016x}", a.0, b.0); unreachable!() },
+      _               => { println!("{:016x} {:016x}", a, b); unreachable!() },
     };
   }
 
