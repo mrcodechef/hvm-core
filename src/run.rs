@@ -1405,6 +1405,14 @@ impl Net {
     }
   }
 
+  // Creates a net and boots from a REF.
+  pub fn boot(&self, root_id: Val) {
+    match self {
+        Net::Lazy(net) => net.net.boot(root_id),
+        Net::Eager(net) => net.net.boot(root_id),
+    }
+  }
+
   // Pretty prints.
   pub fn show(&self) -> String {
     match self {
@@ -1413,6 +1421,13 @@ impl Net {
     }
   }
 
+  // Converts to AST
+  pub fn readback(&self) -> crate::ast::Net {
+    match self {
+      Net::Lazy(this)  => crate::ast::net_from_runtime(&this.net),
+      Net::Eager(this) => crate::ast::net_from_runtime(&this.net),
+    }
+  }
   // Reduces to normal form.
   pub fn normal(&mut self, book: &Book) {
     match self {

@@ -38,20 +38,19 @@ pub fn hvm_lang_readback(net: &Net, book: &DefinitionBook, id_map: HashMap<run::
   let (res_term, readback_errs) = hvml::term::net_to_term::net_to_term(&net, book, &Default::default(), false);
   let term_display = res_term.display(&book.def_names);
 
-  (term_display.to_string(), readback_errs.is_empty())
+  (term_display.to_string(), readback_errs.0.is_empty())
 }
 
-pub fn hvm_lang_normal<'a>(book: &mut DefinitionBook, size: usize) -> (run::Net<'a>, Net, HashMap<run::Val, DefId>) {
-  let result = hvml::compile_book(book, hvml::OptimizationLevel::Heavy).unwrap();
+pub fn hvm_lang_normal(book: &mut DefinitionBook, size: usize) -> (run::Net, Net, HashMap<run::Val, DefId>) {
+  let result = hvml::compile_book(book, hvml::Opts::heavy(), true).unwrap();
   let (root, res_lnet) = normal(result.core_book, size);
   (root, res_lnet, result.hvmc_names.hvmc_name_to_id)
 }
 
 #[allow(unused_variables)]
-pub fn normal(book: Book, size: usize) -> (run::Net<'static>, Net) {
-  fn normal_cpu(book: run::Book, size: usize) -> run::Net<'static> {
-    let data = Box::leak(run::Heap::init(size));
-    let mut rnet = run::Net::new(data);
+pub fn normal(book: Book, size: usize) -> (run::Net, Net) {
+  fn normal_cpu(book: run::Book, size: usize) -> run::Net {
+    let mut rnet = run::Net::new(size, true);
     rnet.boot(name_to_val("main"));
     rnet.normal(&book);
     rnet
@@ -76,6 +75,6 @@ pub fn normal(book: Book, size: usize) -> (run::Net<'static>, Net) {
     }
   };
 
-  let net = net_from_runtime(&rnet);
+  let net = rnet.readback();
   (rnet, net)
 }

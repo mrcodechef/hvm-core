@@ -29,15 +29,15 @@ fn test_list_got() {
   ] {
     let mut book = list_got(index);
     let (rnet, _, _) = hvm_lang_normal(&mut book, 2048);
-    rwts.push(rnet.rewrites())
+    rwts.push(rnet.get_rewrites().total())
   }
 
-  assert_debug_snapshot!(rwts[0], @"306");
-  assert_debug_snapshot!(rwts[1], @"341");
-  assert_debug_snapshot!(rwts[2], @"411");
-  assert_debug_snapshot!(rwts[3], @"551");
+  assert_debug_snapshot!(rwts[0], @"37");
+  assert_debug_snapshot!(rwts[1], @"67");
+  assert_debug_snapshot!(rwts[2], @"127");
+  assert_debug_snapshot!(rwts[3], @"247");
   #[cfg(not(feature = "cuda"))]
-  assert_debug_snapshot!(rwts[4], @"831");
+  assert_debug_snapshot!(rwts[4], @"487");
 
   // Tests the linearity of the function
   let delta = rwts[1] - rwts[0];
@@ -60,14 +60,14 @@ fn test_list_put() {
   for (index, value) in [(0, 2), (1, 4), (3, 8), (7, 16), (15, 32)] {
     let mut book = list_put(index, value);
     let (rnet, _, _) = hvm_lang_normal(&mut book, 2048);
-    rwts.push(rnet.rewrites())
+    rwts.push(rnet.get_rewrites().total())
   }
 
-  assert_debug_snapshot!(rwts[0], @"295");
-  assert_debug_snapshot!(rwts[1], @"320");
-  assert_debug_snapshot!(rwts[2], @"370");
-  assert_debug_snapshot!(rwts[3], @"470");
-  assert_debug_snapshot!(rwts[4], @"670");
+  assert_debug_snapshot!(rwts[0], @"29");
+  assert_debug_snapshot!(rwts[1], @"55");
+  assert_debug_snapshot!(rwts[2], @"107");
+  assert_debug_snapshot!(rwts[3], @"211");
+  assert_debug_snapshot!(rwts[4], @"419");
 
   //Tests the linearity of the function
   let delta = rwts[1] - rwts[0];
